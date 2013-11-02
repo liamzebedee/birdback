@@ -11,8 +11,8 @@ setup(name = "birdback",
 	
 	package_dir = {'birdback' : 'src/birdback'},
 	packages = ['birdback'],
-	dependency_links = ['https://github.com/liamzebedee/scandir/tarball/master#egg=scandir-0.1'],
-	install_requires = [],
+	dependency_links = ['git+https://github.com/liamzebedee/scandir.git#egg=scandir-0.1'],
+	install_requires = ['scandir'],
 	
 	data_files=[('share/icons/hicolor/scalable/apps', ['birdback.svg'])],
 	scripts = [],
