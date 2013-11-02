@@ -6,4 +6,6 @@ birdback is a simple backup application that is currently in development for Ubu
 Licensed under GPLv3 to Liam Edwards-Playne and contributors.
 
 ## Install
-1. Need to install the package scandir by cloning the git repo and then running setup.py install.
+ 1. Clone git repo
+ 2. `sudo apt-get install python3 python3-dev python-setuptools`
+ 2. `sudo python setup.py install`
