@@ -1,1 +1,3 @@
 build/*
+birdback.egg-info/*
+dist/*
