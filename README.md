@@ -7,5 +7,5 @@ Licensed under GPLv3 to Liam Edwards-Playne and contributors.
 
 ## Install
  1. Clone git repo
- 2. `sudo apt-get install python3 python3-dev python-setuptools`
+ 2. `sudo apt-get install python3 python3-dev python3-setuptools python3-gobject`
  2. `sudo python setup.py install`

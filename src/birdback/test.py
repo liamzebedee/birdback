@@ -1,6 +1,5 @@
-import gobject
-import gtk
-import appindicator
+from gi.repository import Gtk
+from gi.repository import AppIndicator3 as appindicator
 import os
 import signal
 
@@ -11,23 +10,23 @@ class BirdbackGUI(object):
 		try:
 			self.indicator = Indicator()
 		except Exception as e:
-			print e
-			print "Critical error. Exiting."
+			print(e)
+			print("Critical error. Exiting.")
 			self.exit(1)
 
 	def signal_exit(self, signum, frame):
-		print 'Recieved signal: ', signum
-		print 'Quitting...'
+		print('Recieved signal: ', signum)
+		print('Quitting...')
 		self.exit()
 	
-   	def exit(self, code=0):
+	def exit(self, code=0):
 		try:
 			print('stopping')
 			#self.xflux_controller.stop()
 		except MethodUnavailableError:
 			pass
 		os.unlink(self.pidfile)
-		gtk.main_quit()
+		Gtk.main_quit()
 		sys.exit(code)
 
 	def check_pid(self):
@@ -43,12 +42,12 @@ class BirdbackGUI(object):
 				except OSError as err:
 					if err.errno == errno.ESRCH:
 						# OSError: [Errno 3] No such process
-						print "stale pidfile, old pid: ", oldpid
+						print("stale pidfile, old pid: ", oldpid)
 			except ValueError:
 				# Corrupt pidfile, empty or not an int on first line
 				pass
 		if running:
-			print "birdback is already running, exiting"
+			print("birdback is already running, exiting")
 			sys.exit()
 		else:
 			file(self.pidfile, 'w').write("%d\n" % pid)
@@ -57,7 +56,7 @@ class BirdbackGUI(object):
 		self.exit()
 	
 	def run(self):
-		gtk.main() # run gtk run!
+		Gtk.main() # run Gtk run!
 
 class Indicator(object):
 	def __init__(self):
@@ -75,17 +74,17 @@ class Indicator(object):
 		self.indicator.set_menu(self.create_menu())
 
 	def create_menu(self):
-		menu = gtk.Menu()
+		menu = Gtk.Menu()
 
 		self.add_menu_item("_Pause f.lux", self._toggle_pause,
-				menu, MenuItem=gtk.CheckMenuItem)
+				menu, MenuItem=Gtk.CheckMenuItem)
 		self.add_menu_item("_Preferences", self._open_preferences, menu)
 		self.add_menu_separator(menu)
 		self.add_menu_item("Quit", self._quit, menu)
 
 		return menu
 
-	def add_menu_item(self, label, handler, menu, event="activate", MenuItem=gtk.MenuItem, show=True):
+	def add_menu_item(self, label, handler, menu, event="activate", MenuItem=Gtk.MenuItem, show=True):
 		item = MenuItem(label)
 		item.connect(event, handler)
 		menu.append(item)
@@ -94,7 +93,7 @@ class Indicator(object):
 		return item
 
 	def add_menu_separator(self, menu, show=True):
-		item = gtk.SeparatorMenuItem()
+		item = Gtk.SeparatorMenuItem()
 		menu.append(item)
 		if show:
 			item.show()
