@@ -2,13 +2,17 @@ from gi.repository import Gtk
 from gi.repository import AppIndicator3 as appindicator
 import os
 import signal
+import sys
 
-class BirdbackGUI(object):
+from birdback import controller
+
+class BirdbackView(object):
 	def __init__(self):
 		self.pidfile = os.path.expanduser("~/.birdback.pid")
 		self.check_pid()
+		self.controller = controller.Controller()
 		try:
-			self.indicator = Indicator()
+			self.indicator = Indicator(self, controller)
 		except Exception as e:
 			print(e)
 			print("Critical error. Exiting.")
@@ -20,11 +24,7 @@ class BirdbackGUI(object):
 		self.exit()
 	
 	def exit(self, code=0):
-		try:
-			print('stopping')
-			#self.xflux_controller.stop()
-		except MethodUnavailableError:
-			pass
+		self.controller.stop()
 		os.unlink(self.pidfile)
 		Gtk.main_quit()
 		sys.exit(code)
@@ -40,7 +40,7 @@ class BirdbackGUI(object):
 					os.kill(oldpid, 0)
 					running = True # ...until proven guilty
 				except OSError as err:
-					if err.errno == errno.ESRCH:
+					if err.errno == os.errno.ESRCH:
 						# OSError: [Errno 3] No such process
 						print("stale pidfile, old pid: ", oldpid)
 			except ValueError:
@@ -50,7 +50,7 @@ class BirdbackGUI(object):
 			print("birdback is already running, exiting")
 			sys.exit()
 		else:
-			file(self.pidfile, 'w').write("%d\n" % pid)
+			open(self.pidfile, 'w').write("%d\n" % pid)
 	
 	def __del__(self):
 		self.exit()
@@ -59,29 +59,24 @@ class BirdbackGUI(object):
 		Gtk.main() # run Gtk run!
 
 class Indicator(object):
-	def __init__(self):
+	def __init__(self, view, controller):
 		# See http://developer.ubuntu.com/api/devel/ubuntu-13.10/python/AppIndicator3-0.1.html
-		self.indicator = appindicator.Indicator(
+		self.indicator = appindicator.Indicator.new(
 		  "birdback-indicator",
 		  "birdback",
-		  appindicator.CATEGORY_APPLICATION_STATUS)
-
+		  appindicator.IndicatorCategory.APPLICATION_STATUS)
+		self.view = view
+		self.controller = controller
 		self.setup_indicator()
 
 	def setup_indicator(self):
-		self.indicator.set_status(appindicator.STATUS_ACTIVE)
+		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
 		self.indicator.set_icon('birdback')
 		self.indicator.set_menu(self.create_menu())
 
 	def create_menu(self):
 		menu = Gtk.Menu()
-
-		self.add_menu_item("_Pause f.lux", self._toggle_pause,
-				menu, MenuItem=Gtk.CheckMenuItem)
-		self.add_menu_item("_Preferences", self._open_preferences, menu)
-		self.add_menu_separator(menu)
-		self.add_menu_item("Quit", self._quit, menu)
-
+		self.add_menu_item("Quit", self.quit, menu)
 		return menu
 
 	def add_menu_item(self, label, handler, menu, event="activate", MenuItem=Gtk.MenuItem, show=True):
@@ -98,19 +93,13 @@ class Indicator(object):
 		if show:
 			item.show()
 
-	def _toggle_pause(self, item):
-		self.xflux_controller.toggle_pause()
-
-	def _open_preferences(self, item):
-		self.fluxgui.open_preferences()
-
-	def _quit(self, item):
-		self.fluxgui.exit()
+	def quit(self, item):
+		self.view.exit()
 
 if __name__ == '__main__':
 	try:
-		app = BirdbackGUI()
-		signal.signal(signal.SIGTERM, app.signal_exit)
-		app.run()
+		view = BirdbackView()
+		signal.signal(signal.SIGTERM, view.signal_exit)
+		view.run()
 	except KeyboardInterrupt:
-		app.exit()
+		view.exit()
