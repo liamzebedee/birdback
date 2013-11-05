@@ -5,6 +5,7 @@ import scandir
 import time
 import os
 import sys
+import shelve
 	
 class Controller(object):
 	def __init__(self):
@@ -36,6 +37,8 @@ class Controller(object):
 		
 		# Load preferences from disk
 		# --------------------------
+		preferencePath = os.path.expanduser("~") + os.sep + ".local" + os.sep + "share" + os.sep + 'birdback'
+		self.preferences = shelve.open(preferencePath)
 		
 		# Instantiate file system watchers
 		# --------------------------------
@@ -45,5 +48,6 @@ class Controller(object):
 		self.view = view.View(self)
 	
 	def quit(self, code=0):
+		self.preferences.close()
 		os.unlink(self.pidfile)
 		sys.exit(code)
