@@ -2,7 +2,6 @@
 # When naming, I thought I'd take a cue from the Rhymenocerous, of whose back the birds lie.
 
 import controller
-
 import signal
 
 if __name__ == '__main__':

@@ -6,7 +6,11 @@ import time
 import os
 import sys
 import shelve
-	
+import asyncore
+import getpass
+
+import pyinotify
+
 class Controller(object):
 	def __init__(self):
 		self.pidfile = os.path.expanduser("~/.birdback.pid")
@@ -34,7 +38,7 @@ class Controller(object):
 			sys.exit()
 		else:
 			open(self.pidfile, 'w').write("%d\n" % pid)
-		
+			
 		# Load preferences from disk
 		# --------------------------
 		preferencePath = os.path.expanduser("~") + os.sep + ".local" + os.sep + "share" + os.sep + 'birdback'
@@ -42,10 +46,27 @@ class Controller(object):
 		
 		# Instantiate file system watchers
 		# --------------------------------
+		watch = pyinotify.WatchManager()
+		watchedEvents = pyinotify.IN_DELETE | pyinotify.IN_CREATE
+
+		class BackupMediaDetector(pyinotify.ProcessEvent):
+			def process_IN_CREATE(self, event):
+				pass
+
+			def process_IN_DELETE(self, event):
+				pass
 		
+		notifier = pyinotify.AsyncNotifier(watch, BackupMediaDetector())
+		wdd = wm.add_watch('/media/' + getpass.getuser(), mask, rec=True)
+	
+	def run(self):		
 		# Instantiate the view (menu bar)
 		# -------------------------------
 		self.view = view.View(self)
+		
+		# Start doing stuff
+		# -----------------
+		asyncore.loop()
 	
 	def quit(self, code=0):
 		self.preferences.close()
