@@ -57,7 +57,7 @@ class Controller(object):
 				pass
 		
 		notifier = pyinotify.AsyncNotifier(watch, BackupMediaDetector())
-		wdd = wm.add_watch('/media/' + getpass.getuser(), mask, rec=True)
+		backupMediaWatch = watch.add_watch('/media/' + getpass.getuser(), watchedEvents, rec=True)
 	
 	def run(self):		
 		# Instantiate the view (menu bar)
