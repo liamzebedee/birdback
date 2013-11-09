@@ -10,8 +10,6 @@ class View(object):
 		  appindicator.IndicatorCategory.APPLICATION_STATUS)
 		self.controller = controller
 		self.setup_indicator()
-		
-		Gtk.main() # run Gtk run!
 
 	def setup_indicator(self):
 		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
@@ -36,7 +34,6 @@ class View(object):
 		menu.append(item)
 		if show:
 			item.show()
-
-	def quit(self, item):
-		Gtk.main_quit()
+	
+	def quit(self, x):
 		self.controller.quit()

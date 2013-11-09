@@ -6,9 +6,12 @@ import time
 import os
 import sys
 import shelve
-import asyncore
 
 import pyinotify
+from gi.repository import Gtk
+from gi.repository import GObject
+
+GObject.threads_init()
 
 class Controller(object):
 	def __init__(self):
@@ -47,30 +50,44 @@ class Controller(object):
 		
 		# Instantiate file system watchers
 		# --------------------------------
-		watch = pyinotify.WatchManager()
+		watchManager = pyinotify.WatchManager()
 		watchedEvents = pyinotify.IN_DELETE | pyinotify.IN_CREATE
 
 		class BackupMediaDetector(pyinotify.ProcessEvent):
 			def process_IN_CREATE(self, event):
-				pass
+				print("USB/HDD detected at " + event.pathname)
 
 			def process_IN_DELETE(self, event):
-				pass
+				print("USB/HDD removed at " + event.pathname)
 		
-		notifier = pyinotify.AsyncNotifier(watch, BackupMediaDetector())
-		backupMediaWatch = watch.add_watch('/dev/disk/by-label/', watchedEvents, rec=True)
+		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector())
+		self.backupMediaWatcher.start()
+		watchManager.add_watch('/dev/disk/by-label/', watchedEvents, rec=True)
 		print("Added watch for USB/HDDs")
 	
 	def run(self):		
 		# Instantiate the view (menu bar)
 		# -------------------------------
 		self.view = view.View(self)
+		print("View instantiated")
 		
 		# Start doing stuff
 		# -----------------
-		asyncore.loop()
+		print("Running main loop")
+		Gtk.main()
 	
 	def quit(self, code=0):
-		self.preferences.close()
-		os.unlink(self.pidfile)
-		sys.exit(code)
+		print("Quitting...")
+		try:
+			self.backupMediaWatcher.stop()
+			Gtk.main_quit()
+			self.preferences.close()
+		except Exception as e:
+			print("Exception while quitting:")
+			print(e)
+		
+		# DO NOT CHANGE THE ORDER OF CALLS BELOW
+		try:
+			os.remove(self.pidfile)
+		except OSError:
+			pass

@@ -9,11 +9,14 @@ if __name__ == '__main__':
 	try:
 		app = controller.Controller()
 		print("Controller instantiated")
-		signal.signal(signal.SIGTERM, app.quit)
+		def signalExit(signal, frame):
+			app.quit()
+		signal.signal(signal.SIGTERM, signalExit)
+		signal.signal(signal.SIGINT, signalExit)
 		app.run()
 	except KeyboardInterrupt:
 		app.quit()
 	except Exception as e:
+		print("Exiting due to critical error:")
 		print(e)
-		print("Critical error. Exiting.")
 		app.quit(1)
