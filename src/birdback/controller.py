@@ -7,7 +7,6 @@ import os
 import sys
 import shelve
 import asyncore
-import getpass
 
 import pyinotify
 
@@ -38,11 +37,13 @@ class Controller(object):
 			sys.exit()
 		else:
 			open(self.pidfile, 'w').write("%d\n" % pid)
+			print("pidfile updated")
 			
 		# Load preferences from disk
 		# --------------------------
 		preferencePath = os.path.expanduser("~") + os.sep + ".local" + os.sep + "share" + os.sep + 'birdback'
 		self.preferences = shelve.open(preferencePath)
+		print("Preferences loaded")
 		
 		# Instantiate file system watchers
 		# --------------------------------
@@ -57,7 +58,8 @@ class Controller(object):
 				pass
 		
 		notifier = pyinotify.AsyncNotifier(watch, BackupMediaDetector())
-		backupMediaWatch = watch.add_watch('/media/' + getpass.getuser(), watchedEvents, rec=True)
+		backupMediaWatch = watch.add_watch('/dev/disk/by-label/', watchedEvents, rec=True)
+		print("Added watch for USB/HDDs")
 	
 	def run(self):		
 		# Instantiate the view (menu bar)

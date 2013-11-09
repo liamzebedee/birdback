@@ -5,13 +5,15 @@ import controller
 import signal
 
 if __name__ == '__main__':
+	app = None
 	try:
-		birdback = controller.Controller()
-		signal.signal(signal.SIGTERM, birdback.quit)
-		birdback.run()
+		app = controller.Controller()
+		print("Controller instantiated")
+		signal.signal(signal.SIGTERM, app.quit)
+		app.run()
 	except KeyboardInterrupt:
-		birdback.quit()
+		app.quit()
 	except Exception as e:
 		print(e)
 		print("Critical error. Exiting.")
-		birdback.quit(1)
+		app.quit(1)
