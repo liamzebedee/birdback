@@ -1,5 +1,6 @@
 from gi.repository import Gtk
 from gi.repository import AppIndicator3 as appindicator
+from gi.repository import Notify
 
 class View(object):
 	def __init__(self, controller):
@@ -10,6 +11,7 @@ class View(object):
 		  appindicator.IndicatorCategory.APPLICATION_STATUS)
 		self.controller = controller
 		self.setup_indicator()
+		Notify.init('birdback')
 
 	def setup_indicator(self):
 		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
@@ -35,5 +37,10 @@ class View(object):
 		if show:
 			item.show()
 	
-	def quit(self, x):
+	def driveInserted(self, event):
+		n = Notify.Notification.new('BirdBack', "Drive inserted: "+event.pathname, None)
+		n.show()
+	
+	def quit(self, _):
+		Notify.uninit()
 		self.controller.quit()

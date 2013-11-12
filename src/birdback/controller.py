@@ -4,8 +4,10 @@ import model
 import scandir
 import time
 import os
+import os.path
 import sys
 import shelve
+import getpass
 
 import pyinotify
 from gi.repository import Gtk
@@ -54,15 +56,23 @@ class Controller(object):
 		watchedEvents = pyinotify.IN_DELETE | pyinotify.IN_CREATE
 
 		class BackupMediaDetector(pyinotify.ProcessEvent):
+			def __init__(self, controller):
+				self.controller = controller
+				
 			def process_IN_CREATE(self, event):
 				print("USB/HDD detected at " + event.pathname)
+				self.controller.view.driveInserted(event)
 
 			def process_IN_DELETE(self, event):
 				print("USB/HDD removed at " + event.pathname)
 		
-		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector())
+		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector(self))
 		self.backupMediaWatcher.start()
 		watchManager.add_watch('/dev/disk/by-label/', watchedEvents, rec=True)
+		# watch /dev/disk/by-id/usb*
+		# readlink -e /dev/disk/by-id/usb-foobar
+		# cat /proc/mount | grep -i "/dev/sdb1"
+		# that is the /media/path
 		print("Added watch for USB/HDDs")
 	
 	def run(self):		
