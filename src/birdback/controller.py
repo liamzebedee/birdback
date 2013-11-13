@@ -8,6 +8,8 @@ import os.path
 import sys
 import shelve
 import getpass
+import subprocess
+import locale
 
 import pyinotify
 from gi.repository import Gtk
@@ -54,25 +56,51 @@ class Controller(object):
 		# --------------------------------
 		watchManager = pyinotify.WatchManager()
 		watchedEvents = pyinotify.IN_DELETE | pyinotify.IN_CREATE
-
+		
 		class BackupMediaDetector(pyinotify.ProcessEvent):
 			def __init__(self, controller):
 				self.controller = controller
+			
+			@staticmethod
+			def getMediaPath(path):
+				encoding = locale.getdefaultlocale()[1]
 				
+				# Example:
+				# /dev/sdb1 on /media/liamzebedee/B42D-AB95 type vfat (foo,foo)
+				devicePath = os.path.realpath("/dev/disk/by-id/"+os.readlink(path))
+				
+				for line in subprocess.check_output(['mount', '-l']).decode(encoding).split('\n'):
+					parts = line.split(' ')
+					# I hardcode a rule that the mount path must be under /media/xxx because 
+					# that's the only path I'm sure that a USB would be mounted on
+					if parts[0] == devicePath and parts[2].startswith('/media'):
+						return parts[2]
+				
+				return None
+			
 			def process_IN_CREATE(self, event):
-				print("USB/HDD detected at " + event.pathname)
-				self.controller.view.driveInserted(event)
+				if event.pathname.startswith('/dev/disk/by-id/usb'):
+					import time
+					time.sleep(1)
+					# We have to wait for the USB to be mounted
+					# XXX HACK replace with something better
+					devDir = self.getMediaPath(event.pathname)
+					if devDir is None: return
+					print('USB detected at: ' + devDir)
+				elif event.pathname.startswith('/dev/disk/by-label'):
+					print('HDD detected at: ' + event.pathname)
+					self.controller.view.driveInserted(event)
 
 			def process_IN_DELETE(self, event):
-				print("USB/HDD removed at " + event.pathname)
+				if event.pathname.startswith('/dev/disk/by-id/usb'):
+					print('USB removed at: ' + event.pathname)
+				elif event.pathname.startswith('/dev/disk/by-label'):
+					print('HDD removed at: ' + event.pathname)				
 		
 		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector(self))
 		self.backupMediaWatcher.start()
 		watchManager.add_watch('/dev/disk/by-label/', watchedEvents, rec=True)
-		# watch /dev/disk/by-id/usb*
-		# readlink -e /dev/disk/by-id/usb-foobar
-		# cat /proc/mount | grep -i "/dev/sdb1"
-		# that is the /media/path
+		watchManager.add_watch('/dev/disk/by-id/', watchedEvents, rec=True)
 		print("Added watch for USB/HDDs")
 	
 	def run(self):		
