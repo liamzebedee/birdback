@@ -37,8 +37,8 @@ class View(object):
 		if show:
 			item.show()
 	
-	def driveInserted(self, event):
-		n = Notify.Notification.new('BirdBack', "Drive inserted: "+event.pathname, None)
+	def driveInserted(self, path):
+		n = Notify.Notification.new('BirdBack', "Drive inserted: "+path, None)
 		n.show()
 	
 	def quit(self, _):
