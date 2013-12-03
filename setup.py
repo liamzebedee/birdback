@@ -14,6 +14,6 @@ setup(name = "birdback",
 	dependency_links = ['git+https://github.com/liamzebedee/scandir.git#egg=scandir-0.1'],
 	install_requires = ['scandir', 'pyinotify'],
 	
-	data_files=[('share/icons/hicolor/scalable/apps', ['birdback.svg'])],
+	data_files=[('share/icons/hicolor/scalable/apps', ['birdback.svg', 'birdback-active.svg'])],
 	scripts = [],
 )

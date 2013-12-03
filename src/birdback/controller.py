@@ -18,6 +18,7 @@ GObject.threads_init()
 
 class Controller(object):
 	def __init__(self):
+		self.backupMediums = {}
 		self.pidfile = os.path.expanduser("~/.birdback.pid")
 		
 		# Check that birdback isn't already running
@@ -74,18 +75,22 @@ class Controller(object):
 					# The easiest thing to do is ignore /media/disk
 					if path == '/media/disk': return
 					print('HDD/USB inserted at: ' + path)
-					self.controller.view.driveInserted(path)
+					if path not in self.controller.backupMediums:
+						self.controller.backupMediums[path] = model.BackupMedium(path)
+					self.controller.view.drive_inserted(self.controller.backupMediums[path])
 
 			def process_IN_DELETE(self, event):
 				path = event.pathname
 				if path == '/media/disk': return
 				print('HDD/USB removed at: ' + path)
+				self.controller.view.drive_removed(self.controller.backupMediums[path])
+				del self.controller.backupMediums[path]
 		
 		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector(self))
 		self.backupMediaWatcher.start()
 		
-		watchManager.add_watch('/media/', pyinotify.IN_DELETE | pyinotify.IN_CREATE, rec=True)
-		watchManager.add_watch('/dev/disk/by-id/', pyinotify.IN_CREATE, rec=True)
+		watchManager.add_watch('/media/', pyinotify.IN_DELETE | pyinotify.IN_CREATE, rec=False)
+		watchManager.add_watch('/dev/disk/by-id/', pyinotify.IN_CREATE, rec=False)
 		print("Added watch for USB/HDDs")
 	
 	def run(self):		
@@ -114,3 +119,6 @@ class Controller(object):
 			os.remove(self.pidfile)
 		except OSError:
 			pass
+	
+	def backup(self, backupMedium):
+		pass
