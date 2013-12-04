@@ -144,37 +144,40 @@ class Controller(object):
 		progress_callback("scanning changed files")
 		filesToBackup = []
 		progress_callback("scanning changed documents")
-		filesToBackup.append(self.home_files_to_backup(backupMedium))
-		progress_callback("scanning changed configuration")
-		filesToBackup.append(self.etc_files_to_backup(backupMedium))
+		filesToBackup.extend(self.home_files_to_backup(backupMedium))
+		#progress_callback("scanning changed configuration")
+		#filesToBackup.append(self.etc_files_to_backup(backupMedium))
 	
 	def home_files_to_backup(self, backupMedium):
-		BACKUP_PATH = '/home/'+getpass.getuser()+'/'
-		EXCLUDES_SIMPLE = [
+		BACKUP_PATH = os.path.expanduser("~")
+		EXCLUDES = [
 			'.cache',
 			'.ccache',
 			'Downloads',
-			'tmp'	
+			'tmp'
 		]
-		EXCLUDES = [BACKUP_PATH + excludePath for excludePath in EXCLUDES_SIMPLE]
 		
 		filesToBackup = []
 		
 		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
 			# Common excludes
-			dirs[:] = [d for d in dirs if d not in EXCLUDES]
+			dirs = [d for d in dirs if d not in EXCLUDES]
+			
 			# Special excludes
-			if root == (BACKUP_PATH + '.local/share'):
+			if root == (os.path.join(BACKUP_PATH + '.local/share')):
 				if 'Trash' in dirs: dirs.remove('Trash')
 			
-			for f in files:
-				try:
+			if not os.path.exists(os.path.join(backupMedium.path, root[1:])):
+				for f in files:
+					filesToBackup.append(os.path.join(root, f))
+			else:
+				for f in files:
 					absolute_file = os.path.join(root, f)
-					if os.path.getmtime(absolute_file) > os.path.getmtime(backupMedium.path+absolute_file):
-						print(f)
-						filesToBackup.append(f)
-				except OSError:
-					pass
+					try:
+						if os.path.getmtime(absolute_file) > os.path.getmtime(os.path.join(backupMedium.path, absolute_file[1:])):
+							filesToBackup.append(f)
+					except OSError as e:
+						print(e)
 			
 		return filesToBackup
 		
@@ -182,7 +185,7 @@ class Controller(object):
 		BACKUP_PATH = '/etc'
 		filesToBackup = []
 		
-		for root, dirs, files in scandir.walk(BACKUP_PATH):
+		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=False):
 			for f in files:
 				if os.path.getmtime(f) > backupMedium.getmtime(f):
 						filesToBackup.append(f)

@@ -60,8 +60,11 @@ class View(object):
 			def progress_callback(progress):
 				menuItem.set_label("Backing up {0} ({1})".format(backupMedium.name, progress))
 				self.update_view()
+			try:
+				self.controller.backup(backupMedium, progress_callback)
+			except Exception as err:
+				print("Backup process failed: " + err)
 			
-			self.controller.backup(backupMedium, progress_callback)
 			# Finished backup
 			menuItem.set_sensitive(True)
 			menuItem.set_label(default_backup_label())
