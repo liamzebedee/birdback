@@ -10,6 +10,7 @@ import shelve
 import getpass
 import subprocess
 import glob
+import shutil
 
 import pyinotify
 from gi.repository import Gtk
@@ -141,12 +142,20 @@ class Controller(object):
 			pass
 	
 	def backup(self, backupMedium, progress_callback):
-		progress_callback("scanning changed files")
 		filesToBackup = []
-		progress_callback("scanning changed documents")
+		progress_callback("1/4 scanning changed documents")
 		filesToBackup.extend(self.home_files_to_backup(backupMedium))
-		#progress_callback("scanning changed configuration")
-		#filesToBackup.append(self.etc_files_to_backup(backupMedium))
+		
+		progress_callback("2/4 scanning changed configuration")
+		filesToBackup.append(self.etc_files_to_backup(backupMedium))
+		
+		progress_callback("3/4 deleting old files")
+		self.deleteOldFiles(backupMedium)
+		
+		progress_callback("4/4 backing up")
+		
+		progress_callback("backup complete")
+		
 	
 	def home_files_to_backup(self, backupMedium):
 		BACKUP_PATH = os.path.expanduser("~")
@@ -173,11 +182,16 @@ class Controller(object):
 			else:
 				for f in files:
 					absolute_file = os.path.join(root, f)
+					remote_mtime = -1
+					try: 
+						remote_mtime = os.path.getmtime(os.path.join(backupMedium.path, absolute_file[1:]))
+					except:
+						pass
 					try:
-						if os.path.getmtime(absolute_file) > os.path.getmtime(os.path.join(backupMedium.path, absolute_file[1:])):
+						if os.path.getmtime(absolute_file) > remote_mtime:
 							filesToBackup.append(f)
 					except OSError as e:
-						print(e)
+						pass
 			
 		return filesToBackup
 		
@@ -186,8 +200,40 @@ class Controller(object):
 		filesToBackup = []
 		
 		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=False):
-			for f in files:
-				if os.path.getmtime(f) > backupMedium.getmtime(f):
-						filesToBackup.append(f)
+			if not os.path.exists(os.path.join(backupMedium.path, root[1:])):
+				for f in files:
+					filesToBackup.append(os.path.join(root, f))
+			else:
+				for f in files:
+					absolute_file = os.path.join(root, f)
+					remote_mtime = -1
+					try: 
+						remote_mtime = os.path.getmtime(os.path.join(backupMedium.path, absolute_file[1:]))
+					except:
+						pass
+					try:
+						if os.path.getmtime(absolute_file) > remote_mtime:
+							filesToBackup.append(f)
+					except OSError as e:
+						pass
 		
 		return filesToBackup
+	
+	def deleteOldFiles(self, backupMedium):
+		for path in [os.path.expanduser("~"), '/etc']: 
+			for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, path[1:]), topdown=True):
+				for f in files:
+					absolute_file = os.path.join(root, f)
+					if not os.path.exists('/'+os.path.relpath(absolute_file, backupMedium.path)):
+						os.remove(absolute_file)
+
+
+
+
+
+
+
+
+
+
+
