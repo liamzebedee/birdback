@@ -83,8 +83,9 @@ class Controller(object):
 				path = event.pathname
 				if path == '/media/disk': return
 				print('HDD/USB removed at: ' + path)
-				self.controller.view.drive_removed(self.controller.backupMediums[path])
-				del self.controller.backupMediums[path]
+				if path in self.controller.backupMediums:
+					self.controller.view.drive_removed(self.controller.backupMediums[path])
+					del self.controller.backupMediums[path]
 		
 		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector(self))
 		self.backupMediaWatcher.start()
@@ -120,5 +121,11 @@ class Controller(object):
 		except OSError:
 			pass
 	
-	def backup(self, backupMedium):
-		pass
+	def backup(self, backupMedium, progress_callback):
+		progress_callback(0)
+		import time
+		time.sleep(1)
+		progress_callback(0.5)
+		time.sleep(1)
+		progress_callback(1)
+		time.sleep(0.5)

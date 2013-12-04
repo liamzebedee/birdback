@@ -1,4 +1,5 @@
 from gi.repository import Gtk
+from gi.repository import GObject
 from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Notify
 
@@ -38,13 +39,38 @@ class View(object):
 		
 		self.add_menu_item("Quit", self.quit)
 		return self.menu
-
+	
+	# I don't know why I have to do this. But it works.
+	def update_view(self):
+		while Gtk.events_pending():
+			Gtk.main_iteration_do(False)
+	
 	def drive_inserted(self, backupMedium):
 		n = Notify.Notification.new('BirdBack', "Drive inserted: "+backupMedium.path, None)
 		n.show()
-		def backup():
-			self.controller.backup(backupMedium)
-		self.backupControls[backupMedium.path] = self.add_menu_item("Backup "+backupMedium.name, backup)
+		def default_backup_label():
+			return "Backup "+backupMedium.name
+		def backup(x):
+			print("Starting backup of " + backupMedium.path)
+			menuItem = self.backupControls[backupMedium.path]
+			menuItem.set_sensitive(False)
+			self.indicate_activity()
+			self.update_view()
+			
+			def progress_callback(progress):
+				menuItem.set_label("Backing up "+backupMedium.name+" ("+str(progress*100)+"%)")
+				self.update_view()
+			
+			# XXX async
+			self.controller.backup(backupMedium, progress_callback)
+			# Finished backup
+			menuItem.set_sensitive(True)
+			menuItem.set_label(default_backup_label())
+			self.indicate_bliss()
+			self.update_view()
+			return True
+		self.backupControls[backupMedium.path] = self.add_menu_item(default_backup_label(), backup)
+		self.backupControls[backupMedium.path].sensitive = False
 	
 	def drive_removed(self, backupMedium):
 		if backupMedium.path in self.backupControls:
