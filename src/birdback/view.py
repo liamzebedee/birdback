@@ -58,10 +58,9 @@ class View(object):
 			self.update_view()
 			
 			def progress_callback(progress):
-				menuItem.set_label("Backing up "+backupMedium.name+" ("+str(progress*100)+"%)")
+				menuItem.set_label("Backing up {0} ({1})".format(backupMedium.name, progress))
 				self.update_view()
 			
-			# XXX async
 			self.controller.backup(backupMedium, progress_callback)
 			# Finished backup
 			menuItem.set_sensitive(True)

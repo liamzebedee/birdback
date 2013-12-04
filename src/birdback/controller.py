@@ -9,6 +9,7 @@ import sys
 import shelve
 import getpass
 import subprocess
+import glob
 
 import pyinotify
 from gi.repository import Gtk
@@ -100,6 +101,24 @@ class Controller(object):
 		self.view = view.View(self)
 		print("View instantiated")
 		
+		# Detect existing HDDs/USBs
+		# -------------------------
+		os.chdir("/dev/disk/by-id")
+		try:
+			for path in glob.glob("usb*"):
+				# Try to automatically mount it
+				devicePath = os.path.realpath("/dev/disk/by-id/"+os.readlink(path))
+				mounts = open("/proc/mounts")
+				for line in mounts:
+					parts = line.split(' ')
+					if parts[0] == devicePath and parts[1].startswith('/media'):
+						path = parts[1]
+						self.backupMediums[path] = model.BackupMedium(path)
+						self.view.drive_inserted(self.backupMediums[path])
+				mounts.close()
+		except:
+			print('Error while detecting existing HDDs/USBs: '+path)
+	
 		# Start doing stuff
 		# -----------------
 		print("Running main loop")
@@ -122,10 +141,50 @@ class Controller(object):
 			pass
 	
 	def backup(self, backupMedium, progress_callback):
-		progress_callback(0)
-		import time
-		time.sleep(1)
-		progress_callback(0.5)
-		time.sleep(1)
-		progress_callback(1)
-		time.sleep(0.5)
+		progress_callback("scanning changed files")
+		filesToBackup = []
+		progress_callback("scanning changed documents")
+		filesToBackup.append(self.home_files_to_backup(backupMedium))
+		progress_callback("scanning changed configuration")
+		filesToBackup.append(self.etc_files_to_backup(backupMedium))
+	
+	def home_files_to_backup(self, backupMedium):
+		BACKUP_PATH = '/home/'+getpass.getuser()+'/'
+		EXCLUDES_SIMPLE = [
+			'.cache',
+			'.ccache',
+			'Downloads',
+			'tmp'	
+		]
+		EXCLUDES = [BACKUP_PATH + excludePath for excludePath in EXCLUDES_SIMPLE]
+		
+		filesToBackup = []
+		
+		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
+			# Common excludes
+			dirs[:] = [d for d in dirs if d not in EXCLUDES]
+			# Special excludes
+			if root == (BACKUP_PATH + '.local/share'):
+				if 'Trash' in dirs: dirs.remove('Trash')
+			
+			for f in files:
+				try:
+					absolute_file = os.path.join(root, f)
+					if os.path.getmtime(absolute_file) > os.path.getmtime(backupMedium.path+absolute_file):
+						print(f)
+						filesToBackup.append(f)
+				except OSError:
+					pass
+			
+		return filesToBackup
+		
+	def etc_files_to_backup(self, backupMedium):
+		BACKUP_PATH = '/etc'
+		filesToBackup = []
+		
+		for root, dirs, files in scandir.walk(BACKUP_PATH):
+			for f in files:
+				if os.path.getmtime(f) > backupMedium.getmtime(f):
+						filesToBackup.append(f)
+		
+		return filesToBackup
