@@ -11,6 +11,7 @@ import getpass
 import subprocess
 import glob
 import shutil
+import errno
 
 import logging
 
@@ -161,12 +162,16 @@ class Controller(object):
 		
 		for i, src_file in enumerate(filesToBackup):
 			progress = float(i / len(filesToBackup))
-			progress_callback("4/4 backing up ({0:.1f}%)".format(100*progress))
+			progress_callback("3/3 backing up ({0:.1f}%)".format(100*progress))
 			
 			dst_dir = os.path.join(backupMedium.path, os.path.dirname(src_file[1:]))
 			try:
 				os.makedirs(dst_dir, exist_ok=True)
-				shutil.copy2(src_file, dst_dir)
+				shutil.copy2(src_file, dst_dir, follow_symlinks=False)
+			except OSError as e:
+				if e.errno == errno.ENXIO:
+					print("ENXIO for "+src_file)
+					continue
 			except Exception as e:
 				if not os.path.exists(backupMedium.path):
 					raise Exception("Backup device was removed")
@@ -197,7 +202,7 @@ class Controller(object):
 		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
 			# Common excludes
 			if root == BACKUP_PATH:
-				dirs = [d for d in dirs if d not in EXCLUDES]
+				dirs[:] = [d for d in dirs if d not in EXCLUDES]
 			
 			# Special excludes
 			if root == (os.path.join(BACKUP_PATH + '.local/share')):
