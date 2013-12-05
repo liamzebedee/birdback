@@ -111,7 +111,7 @@ class Controller(object):
 				mounts = open("/proc/mounts")
 				for line in mounts:
 					parts = line.split(' ')
-					if parts[0] == devicePath and parts[1].startswith('/media'):
+					if parts[0] == devicePath and parts[1].startswith(os.path.join('/media', getpass.getuser())):
 						path = parts[1]
 						self.backupMediums[path] = model.BackupMedium(path)
 						self.view.drive_inserted(self.backupMediums[path])
@@ -181,7 +181,7 @@ class Controller(object):
 		
 	
 	def home_files_to_backup(self, backupMedium):
-		BACKUP_PATH = os.path.join(os.path.expanduser("~"),'Documents/School/SL_Maths')
+		BACKUP_PATH = os.path.expanduser("~")
 		EXCLUDES = [
 			'.cache',
 			'.ccache',
@@ -220,7 +220,7 @@ class Controller(object):
 		return filesToBackup
 	
 	def deleteOldFiles(self, backupMedium):
-		PATH = os.path.join(os.path.expanduser("~"),'Documents/School/SL_Maths')
+		PATH = os.path.expanduser("~")
 		for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, PATH[1:]), topdown=True):
 			for d in dirs:
 				absolute_path = os.path.join(root, d)
@@ -232,6 +232,7 @@ class Controller(object):
 			
 			for f in files:
 				absolute_file = os.path.join(root, f)
+				
 				if not os.path.exists('/'+os.path.relpath(absolute_file, backupMedium.path)):
 					try:
 						os.remove(absolute_file)

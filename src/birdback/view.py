@@ -67,9 +67,7 @@ class View(object):
 		n = Notify.Notification.new('BirdBack', message, None)
 		n.show()
 	
-	def drive_inserted(self, backupMedium):
-		self.show_notification("Drive inserted: "+backupMedium.path)
-		
+	def drive_inserted(self, backupMedium):		
 		def default_backup_label():
 			return "Backup "+backupMedium.name
 		def backup(x):
