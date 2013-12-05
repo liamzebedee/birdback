@@ -9,79 +9,44 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="64px"
-   height="64px"
-   id="svg2888"
    version="1.1"
+   width="64"
+   height="64"
+   id="svg2888"
+   style="enable-background:new"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="birdback.svg"
-   inkscape:export-filename="/home/zach/lookit.png"
-   inkscape:export-xdpi="30.9375"
-   inkscape:export-ydpi="30.9375"
-   sodipodi:version="0.32"
-   inkscape:output_extension="org.inkscape.output.svg.inkscape"
-   enable-background="new">
-  <defs
-     id="defs2890">
-    <inkscape:perspective
-       sodipodi:type="inkscape:persp3d"
-       inkscape:vp_x="0 : 32 : 1"
-       inkscape:vp_y="0 : 1000 : 0"
-       inkscape:vp_z="64 : 32 : 1"
-       inkscape:persp3d-origin="32 : 21.333333 : 1"
-       id="perspective2896" />
-    <inkscape:perspective
-       id="perspective3281"
-       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
-       inkscape:vp_z="744.09448 : 526.18109 : 1"
-       inkscape:vp_y="0 : 1000 : 0"
-       inkscape:vp_x="0 : 526.18109 : 1"
-       sodipodi:type="inkscape:persp3d" />
-    <inkscape:perspective
-       id="perspective3904"
-       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
-       inkscape:vp_z="744.09448 : 526.18109 : 1"
-       inkscape:vp_y="0 : 1000 : 0"
-       inkscape:vp_x="0 : 526.18109 : 1"
-       sodipodi:type="inkscape:persp3d" />
-    <filter
-       inkscape:collect="always"
-       id="filter3006">
-      <feBlend
-         inkscape:collect="always"
-         mode="multiply"
-         in2="BackgroundImage"
-         id="feBlend3008" />
-    </filter>
-  </defs>
+   sodipodi:docname="birdback-active.svg">
   <sodipodi:namedview
-     id="base"
-     pagecolor="#ecffff"
+     pagecolor="#ffffff"
      bordercolor="#666666"
-     borderopacity="1.0"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:zoom="4"
-     inkscape:cx="-27.913902"
-     inkscape:cy="32.675793"
-     inkscape:current-layer="layer1"
-     showgrid="false"
-     inkscape:document-units="px"
-     inkscape:grid-bbox="true"
      inkscape:window-width="1309"
      inkscape:window-height="744"
+     id="namedview13"
+     showgrid="false"
+     inkscape:zoom="3.6875"
+     inkscape:cx="-20.610169"
+     inkscape:cy="32"
      inkscape:window-x="57"
      inkscape:window-y="24"
      inkscape:window-maximized="1"
-     showguides="true">
-    <inkscape:grid
-       type="xygrid"
-       id="grid3063"
-       empspacing="5"
-       visible="true"
-       enabled="true"
-       snapvisiblegridlinesonly="true" />
-  </sodipodi:namedview>
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2890">
+    <filter
+       color-interpolation-filters="sRGB"
+       id="filter3006">
+      <feBlend
+         in2="BackgroundImage"
+         mode="multiply"
+         id="feBlend3008" />
+    </filter>
+  </defs>
   <metadata
      id="metadata2893">
     <rdf:RDF>
@@ -90,50 +55,36 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
   <g
-     inkscape:groupmode="layer"
      id="layer2"
-     inkscape:label="Calque"
      style="display:none">
     <rect
-       style="fill:#000000;fill-opacity:1;stroke:#000000"
-       id="rect3025"
        width="67.5"
        height="76.25"
+       rx="12.8"
        x="-1.75"
        y="-4.5"
-       rx="12.8" />
+       id="rect3025"
+       style="fill:#000000;fill-opacity:1;stroke:#000000" />
   </g>
   <g
      id="layer1"
-     inkscape:label="Layer 1"
-     inkscape:groupmode="layer"
      style="display:inline;filter:url(#filter3006)">
     <path
-       sodipodi:type="arc"
-       style="fill:none;stroke:#0000ff;stroke-width:6;stroke-miterlimit:4;stroke-dasharray:none"
-       id="path3077"
-       sodipodi:cx="32.125"
-       sodipodi:cy="32.25"
-       sodipodi:rx="20.625"
-       sodipodi:ry="20.25"
        d="M 50.002233,42.348666 A 20.625,20.25 0 1 1 50.996041,24.078203"
-       sodipodi:start="0.52209779"
-       sodipodi:end="5.8677967"
-       sodipodi:open="true" />
+       id="path3077"
+       style="fill:none;stroke:#00b3ff;stroke-width:6;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1" />
     <path
-       style="fill:none;stroke:#0000ff;stroke-width:5.74519776999999987;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        d="M 52.627401,41.372599 35.372599,41.877401 z"
        id="path3083"
-       inkscape:connector-curvature="0" />
+       style="fill:none;stroke:#00b3ff;stroke-width:5.74519776999999987;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <path
-       style="fill:#0000ff;stroke:#0000ff;stroke-width:6.63063526000000003;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
        d="m 51.815317,38.565317 0.619366,17.869366 z"
        id="path3085"
-       inkscape:connector-curvature="0" />
+       style="fill:#0000ff;stroke:#00b3ff;stroke-width:6.63063526000000003;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
   </g>
 </svg>

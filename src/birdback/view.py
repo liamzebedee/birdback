@@ -2,6 +2,7 @@ from gi.repository import Gtk
 from gi.repository import GObject
 from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Notify
+import os
 
 class View(object):
 	def __init__(self, controller):
@@ -11,6 +12,10 @@ class View(object):
 		  "birdback-indicator",
 		  "birdback",
 		  appindicator.IndicatorCategory.APPLICATION_STATUS)
+		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
+		iconPath = '/usr/local/share/icons/hicolor/scalable/apps'
+		self.indicator.set_icon(os.path.join(iconPath, 'birdback.svg'))
+		self.indicator.set_attention_icon(os.path.join(iconPath, 'birdback-active.svg'))
 		self.indicate_bliss()
 		self.menu = self.create_menu()
 		self.indicator.set_menu(self.menu)
@@ -19,11 +24,9 @@ class View(object):
 	
 	def indicate_activity(self):
 		self.indicator.set_status(appindicator.IndicatorStatus.ATTENTION)
-		self.indicator.set_icon('birdback-active')
 	
 	def indicate_bliss(self):
 		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
-		self.indicator.set_icon('birdback')
 	
 	def add_menu_item(self, label, handler, event="activate", MenuItem=Gtk.MenuItem, show=True):
 		item = MenuItem(label)
@@ -45,9 +48,13 @@ class View(object):
 		while Gtk.events_pending():
 			Gtk.main_iteration_do(False)
 	
-	def drive_inserted(self, backupMedium):
-		n = Notify.Notification.new('BirdBack', "Drive inserted: "+backupMedium.path, None)
+	def show_notification(self, message):
+		n = Notify.Notification.new('BirdBack', message, None)
 		n.show()
+	
+	def drive_inserted(self, backupMedium):
+		self.show_notification("Drive inserted: "+backupMedium.path)
+		
 		def default_backup_label():
 			return "Backup "+backupMedium.name
 		def backup(x):
@@ -70,6 +77,7 @@ class View(object):
 			menuItem.set_sensitive(True)
 			menuItem.set_label(default_backup_label())
 			self.indicate_bliss()
+			self.show_notification("Backup complete for "+backupMedium.name)
 			self.update_view()
 			return True
 		self.backupControls[backupMedium.path] = self.add_menu_item(default_backup_label(), backup)
