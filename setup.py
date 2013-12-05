@@ -1,11 +1,12 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from setuptools import setup, find_packages
 
 setup(name = "birdback",
-	version = "0.0.2",
-	description = "birdback - simple Ubuntu backup solution",
+	version = "1.0.0",
+	description = "birdback — simple fast Ubuntu backups",
+	long_description = open('README.md').read(),
 	author = "Liam Edwards-Playne",
-	author_email = "liamzebedee@yahoo.com.au",
+	author_email = "liam@liamz.co",
 	url = "http://github.com/liamzebedee/birdback",
 	license = "GPLv3",
 	
@@ -15,5 +16,4 @@ setup(name = "birdback",
 	install_requires = ['scandir', 'pyinotify'],
 	
 	data_files=[('/usr/local/share/icons/hicolor/scalable/apps', ['birdback.svg', 'birdback-active.svg'])],
-	scripts = [],
 )

@@ -124,6 +124,9 @@ class Controller(object):
 		print("Running main loop")
 		Gtk.main()
 	
+	def signal_exit(self, _0, _1):
+		self.quit()
+	
 	def quit(self, code=0):
 		print("Quitting...")
 		try:
