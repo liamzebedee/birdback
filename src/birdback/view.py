@@ -2,7 +2,7 @@ from gi.repository import Gtk
 from gi.repository import GObject
 from gi.repository import AppIndicator3 as appindicator
 from gi.repository import Notify
-import os
+import logging
 
 class View(object):
 	QUIT_ICON = '/usr/share/icons/Humanity/actions/128/process-stop.svg'
@@ -80,21 +80,23 @@ class View(object):
 			self.update_view()
 			
 			def progress_callback(progress):
-				menuItem.set_label("Backing up {0} ({1})".format(backupMedium.name, progress))
+				menuItem.get_children()[0].set_markup("Backing up {0} \n{1}".format(backupMedium.name, progress))
 				print("backup "+backupMedium.name+": "+progress)
 				self.update_view()
 			try:
 				self.controller.backup(backupMedium, progress_callback)
+				self.show_notification("Backup complete for "+backupMedium.name)
 			except Exception as err:
-				print("Backup process failed: " + err)
+				notice = "Backup of {0} failed: {1}".format(backupMedium.name, err)
+				print(notice)
+				logging.exception('')
+				self.show_notification(notice)
+			finally:
+				menuItem.set_sensitive(True)
+				menuItem.set_label(default_backup_label())
+				self.indicate_bliss()
+				self.update_view()
 			
-			# Finished backup
-			menuItem.set_sensitive(True)
-			menuItem.set_label(default_backup_label())
-			self.indicate_bliss()
-			self.show_notification("Backup complete for "+backupMedium.name)
-			self.update_view()
-			return True
 		self.backupControls[backupMedium.path] = self.add_image_menu_item(default_backup_label(), backup, View.DO_BACKUP_ICON)
 		self.backupControls[backupMedium.path].sensitive = False
 	

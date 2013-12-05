@@ -12,6 +12,8 @@ import subprocess
 import glob
 import shutil
 
+import logging
+
 import pyinotify
 from gi.repository import Gtk
 from gi.repository import GObject
@@ -68,14 +70,12 @@ class Controller(object):
 					# Try to automatically mount it
 					devicePath = os.path.realpath("/dev/disk/by-id/"+os.readlink(path))
 					try:
-						subprocess.check_output(['udisks', '--mount', devicePath])
+						# We use udisksctl here because it mounts to /media/USERNAME/XXX instead of simply /media/XXX
+						subprocess.check_output(['udisksctl', 'mount', '--block-device', devicePath])
 					except:
 						print('Error while mounting path: '+path)
 					return
 				else:
-					# /media/disk is mounted erronously when I run udisks on a bad path
-					# The easiest thing to do is ignore /media/disk
-					if path == '/media/disk': return
 					print('HDD/USB inserted at: ' + path)
 					if path not in self.controller.backupMediums:
 						self.controller.backupMediums[path] = model.BackupMedium(path)
@@ -83,7 +83,6 @@ class Controller(object):
 
 			def process_IN_DELETE(self, event):
 				path = event.pathname
-				if path == '/media/disk': return
 				print('HDD/USB removed at: ' + path)
 				if path in self.controller.backupMediums:
 					self.controller.view.drive_removed(self.controller.backupMediums[path])
@@ -92,7 +91,7 @@ class Controller(object):
 		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector(self))
 		self.backupMediaWatcher.start()
 		
-		watchManager.add_watch('/media/', pyinotify.IN_DELETE | pyinotify.IN_CREATE, rec=False)
+		watchManager.add_watch(os.path.join('/media', getpass.getuser()), pyinotify.IN_DELETE | pyinotify.IN_CREATE, rec=False)
 		watchManager.add_watch('/dev/disk/by-id/', pyinotify.IN_CREATE, rec=False)
 		print("Added watch for USB/HDDs")
 	
@@ -143,22 +142,46 @@ class Controller(object):
 	
 	def backup(self, backupMedium, progress_callback):
 		filesToBackup = []
-		progress_callback("1/4 scanning changed documents")
-		filesToBackup.extend(self.home_files_to_backup(backupMedium))
 		
-		progress_callback("2/4 scanning changed configuration")
-		filesToBackup.append(self.etc_files_to_backup(backupMedium))
+		# progress_callback("x/4 backing up installed programs/packages")
+		# dpkg --get-selections > ~/Package.list
+		# cp /etc/apt/sources.list ~/sources.list
+		# apt-key exportall > ~/Repo.keys
 		
-		progress_callback("3/4 deleting old files")
+		progress_callback("1/3 deleting old files from backup")
 		self.deleteOldFiles(backupMedium)
 		
-		progress_callback("4/4 backing up")
+		progress_callback("2/3 scanning changed documents")
+		filesToBackup.extend(self.home_files_to_backup(backupMedium))
+				
+		progress_callback("3/3 backing up")
+		
+		for i, src_file in enumerate(filesToBackup):
+			progress = float(i / len(filesToBackup))
+			progress_callback("4/4 backing up ({0:.1f}%)".format(100*progress))
+			
+			dst_dir = os.path.join(backupMedium.path, os.path.dirname(src_file[1:]))
+			try:
+				os.makedirs(dst_dir, exist_ok=True)
+				shutil.copy2(src_file, dst_dir)
+			except Exception as e:
+				if not os.path.exists(backupMedium.path):
+					raise Exception("Backup device was removed")
+				elif not os.path.exists(src_file):
+					print("[{0}]: not backing up because file doesn't exist - {1}".format(backupMedium.name, src_file))
+					continue
+				else:
+					# Something else failed like:
+					#  - backup medium has no space left
+					#  - we couldn't create the directory on the backup medium
+					#  - we couldn't copy the file over
+					raise e
 		
 		progress_callback("backup complete")
 		
 	
 	def home_files_to_backup(self, backupMedium):
-		BACKUP_PATH = os.path.expanduser("~")
+		BACKUP_PATH = os.path.join(os.path.expanduser("~"),'Documents/School/SL_Maths')
 		EXCLUDES = [
 			'.cache',
 			'.ccache',
@@ -170,7 +193,8 @@ class Controller(object):
 		
 		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
 			# Common excludes
-			dirs = [d for d in dirs if d not in EXCLUDES]
+			if root == BACKUP_PATH:
+				dirs = [d for d in dirs if d not in EXCLUDES]
 			
 			# Special excludes
 			if root == (os.path.join(BACKUP_PATH + '.local/share')):
@@ -189,46 +213,30 @@ class Controller(object):
 						pass
 					try:
 						if os.path.getmtime(absolute_file) > remote_mtime:
-							filesToBackup.append(f)
+							filesToBackup.append(absolute_file)
 					except OSError as e:
 						pass
 			
 		return filesToBackup
-		
-	def etc_files_to_backup(self, backupMedium):
-		BACKUP_PATH = '/etc'
-		filesToBackup = []
-		
-		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=False):
-			if not os.path.exists(os.path.join(backupMedium.path, root[1:])):
-				for f in files:
-					filesToBackup.append(os.path.join(root, f))
-			else:
-				for f in files:
-					absolute_file = os.path.join(root, f)
-					remote_mtime = -1
-					try: 
-						remote_mtime = os.path.getmtime(os.path.join(backupMedium.path, absolute_file[1:]))
-					except:
-						pass
-					try:
-						if os.path.getmtime(absolute_file) > remote_mtime:
-							filesToBackup.append(f)
-					except OSError as e:
-						pass
-		
-		return filesToBackup
 	
 	def deleteOldFiles(self, backupMedium):
-		for path in [os.path.expanduser("~"), '/etc']: 
-			for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, path[1:]), topdown=True):
-				for f in files:
-					absolute_file = os.path.join(root, f)
-					if not os.path.exists('/'+os.path.relpath(absolute_file, backupMedium.path)):
+		PATH = os.path.join(os.path.expanduser("~"),'Documents/School/SL_Maths')
+		for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, PATH[1:]), topdown=True):
+			for d in dirs:
+				absolute_path = os.path.join(root, d)
+				if not os.path.exists('/'+os.path.relpath(absolute_path,backupMedium.path)):
+					try:
+						shutil.rmtree(absolute_path)
+					except:
+						pass
+			
+			for f in files:
+				absolute_file = os.path.join(root, f)
+				if not os.path.exists('/'+os.path.relpath(absolute_file, backupMedium.path)):
+					try:
 						os.remove(absolute_file)
-
-
-
+					except:
+						pass
 
 
 
