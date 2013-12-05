@@ -5,6 +5,11 @@ from gi.repository import Notify
 import os
 
 class View(object):
+	QUIT_ICON = '/usr/share/icons/Humanity/actions/128/process-stop.svg'
+	ACTIVE_ICON = '/usr/local/share/icons/hicolor/scalable/apps/birdback.svg'
+	ATTENTION_ICON = '/usr/local/share/icons/hicolor/scalable/apps/birdback-active.svg'
+	DO_BACKUP_ICON = '/usr/share/icons/Humanity/actions/48/forward.svg'
+	
 	def __init__(self, controller):
 		self.controller = controller
 		# See http://developer.ubuntu.com/api/devel/ubuntu-13.10/python/AppIndicator3-0.1.html
@@ -13,9 +18,8 @@ class View(object):
 		  "birdback",
 		  appindicator.IndicatorCategory.APPLICATION_STATUS)
 		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
-		iconPath = '/usr/local/share/icons/hicolor/scalable/apps'
-		self.indicator.set_icon(os.path.join(iconPath, 'birdback.svg'))
-		self.indicator.set_attention_icon(os.path.join(iconPath, 'birdback-active.svg'))
+		self.indicator.set_icon(View.ACTIVE_ICON)
+		self.indicator.set_attention_icon(View.ATTENTION_ICON)
 		self.indicate_bliss()
 		self.menu = self.create_menu()
 		self.indicator.set_menu(self.menu)
@@ -36,11 +40,22 @@ class View(object):
 			item.show()
 		return item
 	
+	def add_image_menu_item(self, label, handler, imgPath, event="activate", show=True):
+		img = Gtk.Image()
+		img.set_from_file(imgPath)
+		item = Gtk.ImageMenuItem(label)
+		item.set_image(img)
+		item.connect(event, handler)
+		self.menu.append(item)
+		item.show()
+		return item
+	
 	def create_menu(self):
 		self.menu = Gtk.Menu()
 		self.menu.show_all()
 		
-		self.add_menu_item("Quit", self.quit)
+		self.add_image_menu_item('Quit', self.quit, View.QUIT_ICON)
+		
 		return self.menu
 	
 	# I don't know why I have to do this. But it works.
@@ -80,7 +95,7 @@ class View(object):
 			self.show_notification("Backup complete for "+backupMedium.name)
 			self.update_view()
 			return True
-		self.backupControls[backupMedium.path] = self.add_menu_item(default_backup_label(), backup)
+		self.backupControls[backupMedium.path] = self.add_image_menu_item(default_backup_label(), backup, View.DO_BACKUP_ICON)
 		self.backupControls[backupMedium.path].sensitive = False
 	
 	def drive_removed(self, backupMedium):

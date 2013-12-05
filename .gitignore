@@ -2,3 +2,4 @@ build/*
 birdback.egg-info/*
 dist/*
 src/birdback/__pycache__/*
+src/birdback/*.pyc
