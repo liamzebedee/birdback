@@ -155,8 +155,8 @@ class Controller(object):
 		progress_callback("1/3 deleting old files from backup")
 		self.deleteOldFiles(backupMedium, progress_callback)
 		
-		progress_callback("2/3 scanning changed documents")
-		filesToBackup.extend(self.home_files_to_backup(backupMedium))
+		progress_callback("2/3 scanning documents")
+		filesToBackup.extend(self.home_files_to_backup(backupMedium), progress_callback)
 				
 		progress_callback("3/3 backing up")
 		for i, src_file in enumerate(filesToBackup):
@@ -169,6 +169,8 @@ class Controller(object):
 				shutil.copy2(src_file, dst_dir, follow_symlinks=False)
 			except OSError as e:
 				if e.errno == errno.ENXIO:
+					# XXX I have no friggin' idea what this is or means
+					# Pops up sometimes for GNOME temp files in .local, I don't really care
 					print("ENXIO for "+src_file)
 					continue
 			except Exception as e:
@@ -187,7 +189,7 @@ class Controller(object):
 		progress_callback("backup complete")
 		
 	
-	def home_files_to_backup(self, backupMedium):
+	def home_files_to_backup(self, backupMedium, progress_callback):
 		BACKUP_PATH = os.path.expanduser("~")
 		EXCLUDES = [
 			'.cache',
@@ -197,6 +199,11 @@ class Controller(object):
 		]
 		
 		filesToBackup = []
+		filesProcessed = 0
+		
+		def update_progress():
+			filesProcessed += 1
+			progress_callback("2/3 scanning documents ({0} processed)".format(filesProcessed))
 		
 		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
 			# Common excludes
@@ -209,9 +216,12 @@ class Controller(object):
 			
 			if not os.path.exists(os.path.join(backupMedium.path, root[1:])):
 				for f in files:
+					update_progress()
 					filesToBackup.append(os.path.join(root, f))
 			else:
 				for f in files:
+					update_progress()
+										
 					absolute_file = os.path.join(root, f)
 					remote_mtime = -1
 					try: 
@@ -226,7 +236,12 @@ class Controller(object):
 			
 		return filesToBackup
 	
-	def deleteOldFiles(self, backupMedium, progress_callback):		
+	def deleteOldFiles(self, backupMedium, progress_callback):
+		filesProcessed = 0
+		def update_progress():
+			filesProcessed += 1
+			progress_callback("1/3 deleting old files from backup ({0} processed)".format(filesProcessed))
+		
 		PATH = os.path.expanduser("~")
 		for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, PATH[1:]), topdown=True):
 			for d in dirs:
@@ -238,6 +253,7 @@ class Controller(object):
 						pass
 			
 			for f in files:
+				update_progress()
 				absolute_file = os.path.join(root, f)
 				
 				if not os.path.exists('/'+os.path.relpath(absolute_file, backupMedium.path)):
