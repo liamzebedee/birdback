@@ -155,13 +155,17 @@ class Controller(object):
 		progress_callback("1/3 deleting old files from backup")
 		self.deleteOldFiles(backupMedium, progress_callback)
 		
+		# If backup device was removed while old files were being deleted in deleteOldFiles, then the directory walk just exits, which is why I test here
+		if not os.path.exists(backupMedium.path):
+			raise Exception("Backup device was removed")
+		
 		progress_callback("2/3 scanning documents")
-		filesToBackup.extend(self.home_files_to_backup(backupMedium), progress_callback)
+		filesToBackup.extend(self.home_files_to_backup(backupMedium, progress_callback))
 				
 		progress_callback("3/3 backing up")
 		for i, src_file in enumerate(filesToBackup):
 			progress = float(i / len(filesToBackup))
-			progress_callback("3/3 backing up ({0:.1f}%)".format(100*progress))
+			progress_callback("3/3 backing up ({0:.1f}%)".format(100*progress), log=False)
 			
 			dst_dir = os.path.join(backupMedium.path, os.path.dirname(src_file[1:]))
 			try:
@@ -201,11 +205,10 @@ class Controller(object):
 		filesToBackup = []
 		filesProcessed = 0
 		
-		def update_progress():
-			filesProcessed += 1
-			progress_callback("2/3 scanning documents ({0} processed)".format(filesProcessed))
-		
 		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
+			if not os.path.exists(backupMedium.path):
+				raise Exception("Backup device was removed")
+			
 			# Common excludes
 			if root == BACKUP_PATH:
 				dirs[:] = [d for d in dirs if d not in EXCLUDES]
@@ -216,11 +219,13 @@ class Controller(object):
 			
 			if not os.path.exists(os.path.join(backupMedium.path, root[1:])):
 				for f in files:
-					update_progress()
+					filesProcessed += 1
+					progress_callback("2/3 scanning documents ({0} processed)".format(filesProcessed), log=False)
 					filesToBackup.append(os.path.join(root, f))
 			else:
 				for f in files:
-					update_progress()
+					filesProcessed += 1
+					progress_callback("2/3 scanning documents ({0} processed)".format(filesProcessed), log=False)
 										
 					absolute_file = os.path.join(root, f)
 					remote_mtime = -1
@@ -237,10 +242,7 @@ class Controller(object):
 		return filesToBackup
 	
 	def deleteOldFiles(self, backupMedium, progress_callback):
-		filesProcessed = 0
-		def update_progress():
-			filesProcessed += 1
-			progress_callback("1/3 deleting old files from backup ({0} processed)".format(filesProcessed))
+		filesProcessed = 0		
 		
 		PATH = os.path.expanduser("~")
 		for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, PATH[1:]), topdown=True):
@@ -253,7 +255,9 @@ class Controller(object):
 						pass
 			
 			for f in files:
-				update_progress()
+				filesProcessed += 1
+				progress_callback("1/3 deleting old files from backup ({0} processed)".format(filesProcessed), log=False)
+				
 				absolute_file = os.path.join(root, f)
 				
 				if not os.path.exists('/'+os.path.relpath(absolute_file, backupMedium.path)):

@@ -77,9 +77,10 @@ class View(object):
 			self.indicate_activity()
 			self.update_view()
 			
-			def progress_callback(progress):
-				menuItem.get_children()[0].set_markup("Backing up {0} \n{1}".format(backupMedium.name, progress))
-				print("backup "+backupMedium.name+": "+progress)
+			def progress_callback(progress, log=True):
+				menuItem.set_label("Backing up {0} \n{1}".format(backupMedium.name, progress))
+				if log:
+					print("backup "+backupMedium.name+": "+progress)
 				self.update_view()
 			try:
 				self.controller.backup(backupMedium, progress_callback)
