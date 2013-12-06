@@ -53,7 +53,7 @@ class Controller(object):
 			
 		# Load preferences from disk
 		# --------------------------
-		preferencePath = os.path.expanduser("~") + os.sep + ".local" + os.sep + "share" + os.sep + 'birdback'
+		preferencePath = os.path.join(os.path.expanduser("~"), ".local", "share", 'birdback')
 		self.preferences = shelve.open(preferencePath)
 		print("Preferences loaded")
 		
@@ -153,13 +153,12 @@ class Controller(object):
 		# apt-key exportall > ~/Repo.keys
 		
 		progress_callback("1/3 deleting old files from backup")
-		self.deleteOldFiles(backupMedium)
+		self.deleteOldFiles(backupMedium, progress_callback)
 		
 		progress_callback("2/3 scanning changed documents")
 		filesToBackup.extend(self.home_files_to_backup(backupMedium))
 				
 		progress_callback("3/3 backing up")
-		
 		for i, src_file in enumerate(filesToBackup):
 			progress = float(i / len(filesToBackup))
 			progress_callback("3/3 backing up ({0:.1f}%)".format(100*progress))
@@ -205,7 +204,7 @@ class Controller(object):
 				dirs[:] = [d for d in dirs if d not in EXCLUDES]
 			
 			# Special excludes
-			if root == (os.path.join(BACKUP_PATH + '.local/share')):
+			if root == (os.path.join(BACKUP_PATH, '.local/share')):
 				if 'Trash' in dirs: dirs.remove('Trash')
 			
 			if not os.path.exists(os.path.join(backupMedium.path, root[1:])):
@@ -227,7 +226,7 @@ class Controller(object):
 			
 		return filesToBackup
 	
-	def deleteOldFiles(self, backupMedium):
+	def deleteOldFiles(self, backupMedium, progress_callback):		
 		PATH = os.path.expanduser("~")
 		for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, PATH[1:]), topdown=True):
 			for d in dirs:
