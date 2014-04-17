@@ -98,8 +98,8 @@ class Controller(object):
 		print("Added watch for USB/HDDs")
 	
 	def run(self):		
-		# Instantiate the view (menu bar)
-		# -------------------------------
+		# Instantiate the view
+		# --------------------
 		self.view = view.View(self)
 		print("View instantiated")
 		
@@ -192,29 +192,27 @@ class Controller(object):
 			'.cache',
 			'.ccache',
 			'Downloads',
-			'tmp'
+			'tmp',
+			'.local/share/Trash'
 		]
 		
 		filesToBackup = []
 		
-		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
+		for dirpath, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
 			if not os.path.exists(backup_medium.path):
 				raise Exception("Backup medium was removed")
+            
+            # Excludes
+			dirs[:] = [directory for directory in dirs if directory not in EXCLUDES]
 			
-			# Common excludes
-			if root == BACKUP_PATH:
-				dirs[:] = [d for d in dirs if d not in EXCLUDES]
-			
-			# Special excludes
-			if root == (os.path.join(BACKUP_PATH, '.local/share')):
-				if 'Trash' in dirs: dirs.remove('Trash')
-			
-			if not os.path.exists(os.path.join(backup_medium.path, root[1:])):
+			# If we haven't backed up this file before
+			if not os.path.exists(os.path.join(backup_medium.path, dirpath[1:])):
 				for f in files:
-					filesToBackup.append(os.path.join(root, f))
+					filesToBackup.append(os.path.join(dirpath, f))
+			# If we have backed it up before, check if its different or not
 			else:
 				for f in files:
-					absolute_file_path = os.path.join(root, f)
+					absolute_file_path = os.path.join(dirpath, f)
 					remoteMtime = -1
 					try: 
 						remoteMtime = os.path.getmtime(os.path.join(backup_medium.path, absolute_file_path[1:]))
@@ -230,11 +228,11 @@ class Controller(object):
 	
 	def delete_old_files(self, backup_medium, progress_callback):		
 		PATH = os.path.expanduser("~")
-		for root, dirs, files in scandir.walk(os.path.join(backup_medium.path, PATH[1:]), topdown=True):
+		for dirpath, dirs, files in scandir.walk(os.path.join(backup_medium.path, PATH[1:]), topdown=True):
 			if not os.path.exists(backup_medium.path):
 				raise Exception("Backup medium was removed")
 			for d in dirs:
-				absolute_file_path = os.path.join(root, d)
+				absolute_file_path = os.path.join(dirpath, d)
 				if not os.path.exists('/'+os.path.relpath(absolute_file_path,backup_medium.path)):
 					try:
 						shutil.rmtree(absolute_file_path)
@@ -242,7 +240,7 @@ class Controller(object):
 						pass
 			
 			for f in files:
-				absolute_file_path = os.path.join(root, f)
+				absolute_file_path = os.path.join(dirpath, f)
 				
 				if not os.path.exists('/'+os.path.relpath(absolute_file_path, backup_medium.path)):
 					try:

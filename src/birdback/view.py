@@ -19,7 +19,12 @@ class View(object):
 		self.indicator.set_icon(View.ACTIVE_ICON)
 		self.indicator.set_attention_icon(View.ATTENTION_ICON)
 		self.indicate_inactivity()
+		# Menu
 		self.menu = Menu(self.quit, self.open_preferences)
+		# Preferences dialog
+		self.preferences_dialog = PreferencesDialog()
+		self.preferences_dialog.connect("delete-event", self.preferences_dialog.hide2)
+		
 		self.indicator.set_menu(self.menu.gtk_menu)
 		Notify.init('birdback')
 		self.backup_controls = {}
@@ -87,17 +92,15 @@ class View(object):
 			item.hide()
 			self.menu.gtk_menu.remove(item)
 	
-	
 	def open_preferences(self, _0):
-		return
-	
+		self.preferences_dialog.show()
 	
 	def quit(self, _):
 		Notify.uninit()
 		self.controller.quit()
 
 
-
+# TODO make this inherit from Gtk.Menu, simplify things
 class Menu(object):
 	def __init__(self, quit_handler, preferences_handler):
 		self.gtk_menu = Gtk.Menu()
@@ -122,3 +125,62 @@ class Menu(object):
 		item.connect(event, handler)
 		self.gtk_menu.append(item)
 		item.show()
+
+class PreferencesDialog(Gtk.Window):
+	def __init__(self):
+		Gtk.Window.__init__(self, title="Birdback - Preferences")
+		self.set_border_width(10)
+		self.set_default_size(500, 700)
+		box = Gtk.Box(Gtk.Orientation.VERTICAL, 0)
+		box.show()
+        
+		listbox = Gtk.ListBox()
+		listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+		box.pack_start(listbox, True, True, 0)
+        
+		row1 = Gtk.ListBoxRow()
+		self.excludes = Gtk.ListStore(str)
+		tree = Gtk.TreeView(self.excludes)
+		#tree.set_default_size(500, 600)
+		tree.columns_autosize()
+		renderer = Gtk.CellRendererText()
+		column = Gtk.TreeViewColumn("Path", renderer, text=0)
+		tree.append_column(column)
+		tree.show()
+		row1.add(tree)
+		row1.show()
+		
+		row2 = Gtk.ListBoxRow()
+		tbar = Gtk.Toolbar();
+		tbar.set_style(Gtk.ToolbarStyle.ICONS)
+		tbar.set_icon_size(Gtk.IconSize.SMALL_TOOLBAR)
+		tbar.set_show_arrow(False)
+		tbar.get_style_context().add_class(Gtk.STYLE_CLASS_INLINE_TOOLBAR)
+		tbar.get_style_context().set_junction_sides(Gtk.JunctionSides.TOP)
+		add_button = Gtk.ToolButton("Add")
+		add_button.set_icon_name("list-add-symbolic")
+		add_button.connect("clicked", self.add_path)
+		add_button.show()
+		tbar.insert(add_button, -1)
+		remove_button = Gtk.ToolButton("Remove")
+		remove_button.set_icon_name("list-remove-symbolic")
+		remove_button.connect("clicked", self.remove_path)
+		remove_button.show()
+		tbar.insert(remove_button, -1)
+		tbar.show()
+		row2.add(tbar)
+		row2.show()
+		
+		listbox.add(row1)
+		listbox.add(row2)
+		#box.pack_start(tree, True, True, 0);
+		#box.pack_start(tbar, False, True, 0);
+		self.add(box)
+	
+	def add_path(self, _0, _1):
+		return
+	def remove_path(self, _0, _1):
+		return
+	
+	def hide2(self, _0, _1):
+		self.hide()
