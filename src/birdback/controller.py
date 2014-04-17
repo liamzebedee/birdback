@@ -19,15 +19,16 @@ import pyinotify
 from gi.repository import Gtk
 from gi.repository import GObject
 
+# This is so pyinotify can work in another background thread
 GObject.threads_init()
 
 class Controller(object):
 	def __init__(self):
-		self.backupMediums = {}
+		self.backup_mediums = {}
 		self.pidfile = os.path.expanduser("~/.birdback.pid")
 		
 		# Check that birdback isn't already running
-		# -----------------------------------------
+		# -------------------deleteOldFiles----------------------
 		pid = os.getpid()
 		
 		running = False # Innocent...
@@ -50,11 +51,11 @@ class Controller(object):
 		else:
 			open(self.pidfile, 'w').write("%d\n" % pid)
 			print("pidfile updated")
-			
+		
 		# Load preferences from disk
 		# --------------------------
-		preferencePath = os.path.join(os.path.expanduser("~"), ".local", "share", 'birdback')
-		self.preferences = shelve.open(preferencePath)
+		preferencesPath = os.path.join(os.path.expanduser("~"), ".local", "share", 'birdback')
+		self.preferences = model.Preferences(preferencesPath)
 		print("Preferences loaded")
 		
 		# Instantiate file system watchers
@@ -78,16 +79,16 @@ class Controller(object):
 					return
 				else:
 					print('HDD/USB inserted at: ' + path)
-					if path not in self.controller.backupMediums:
-						self.controller.backupMediums[path] = model.BackupMedium(path)
-					self.controller.view.drive_inserted(self.controller.backupMediums[path])
+					if path not in self.controller.backup_mediums:
+						self.controller.backup_mediums[path] = model.BackupMedium(path)
+					self.controller.view.drive_inserted(self.controller.backup_mediums[path])
 
 			def process_IN_DELETE(self, event):
 				path = event.pathname
 				print('HDD/USB removed at: ' + path)
-				if path in self.controller.backupMediums:
-					self.controller.view.drive_removed(self.controller.backupMediums[path])
-					del self.controller.backupMediums[path]
+				if path in self.controller.backup_mediums:
+					self.controller.view.drive_removed(self.controller.backup_mediums[path])
+					del self.controller.backup_mediums[path]
 		
 		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector(self))
 		self.backupMediaWatcher.start()
@@ -114,14 +115,14 @@ class Controller(object):
 					parts = line.split(' ')
 					if parts[0] == devicePath and parts[1].startswith(os.path.join('/media', getpass.getuser())):
 						path = parts[1]
-						self.backupMediums[path] = model.BackupMedium(path)
-						self.view.drive_inserted(self.backupMediums[path])
+						self.backup_mediums[path] = model.BackupMedium(path)
+						self.view.drive_inserted(self.backup_mediums[path])
 				mounts.close()
-		except:
-			print('Error while detecting existing HDDs/USBs: '+path)
+		except Exception as exception:
+			print('Error while detecting existing HDDs/USBs {0}: {1}'.format(path, exception))
 	
-		# Start doing stuff
-		# -----------------
+		# Start main loop
+		# ---------------
 		print("Running main loop")
 		Gtk.main()
 	
@@ -144,56 +145,48 @@ class Controller(object):
 		except OSError:
 			pass
 	
-	def backup(self, backupMedium, progress_callback):
-		filesToBackup = []
-		
-		# progress_callback("x/4 backing up installed programs/packages")
-		# dpkg --get-selections > ~/Package.list
-		# cp /etc/apt/sources.list ~/sources.list
-		# apt-key exportall > ~/Repo.keys
-		
+	def backup(self, backup_medium, progress_callback):
+		files_to_backup = []
+				
 		progress_callback("1/3 deleting old files from backup")
-		self.deleteOldFiles(backupMedium, progress_callback)
+		self.delete_old_files(backup_medium, progress_callback)
 		
-		# If backup device was removed while old files were being deleted in deleteOldFiles, then the directory walk just exits, which is why I test here
-		if not os.path.exists(backupMedium.path):
-			raise Exception("Backup device was removed")
-		
-		progress_callback("2/3 scanning documents")
-		filesToBackup.extend(self.home_files_to_backup(backupMedium, progress_callback))
+		progress_callback("2/3 scanning changed documents")
+		files_to_backup.extend(self.get_home_files_to_backup(backup_medium))
 				
 		progress_callback("3/3 backing up")
-		for i, src_file in enumerate(filesToBackup):
-			progress = float(i / len(filesToBackup))
-			progress_callback("3/3 backing up ({0:.1f}%)".format(100*progress), log=False)
+		for i, src_file in enumerate(files_to_backup):
+			if not os.path.exists(backup_medium.path):
+				raise Exception("Backup medium was removed")
 			
-			dst_dir = os.path.join(backupMedium.path, os.path.dirname(src_file[1:]))
 			try:
-				os.makedirs(dst_dir, exist_ok=True)
-				shutil.copy2(src_file, dst_dir, follow_symlinks=False)
+				dest_dir = os.path.join(backup_medium.path, os.path.dirname(src_file[1:]))
+				os.makedirs(dest_dir, exist_ok=True)
+				shutil.copy2(src_file, dest_dir, follow_symlinks=False)
+				
+				progress = float(i / len(files_to_backup))
+				progress_callback("3/3 backing up ({0:.1f}%)".format(100*progress))
 			except OSError as e:
 				if e.errno == errno.ENXIO:
-					# XXX I have no friggin' idea what this is or means
-					# Pops up sometimes for GNOME temp files in .local, I don't really care
-					print("ENXIO for "+src_file)
+					print("[Error] ENXIO for "+srcFile)
 					continue
-			except Exception as e:
-				if not os.path.exists(backupMedium.path):
+			except Exception as exception:
+				if not os.path.exists(backup_medium.path):
 					raise Exception("Backup device was removed")
-				elif not os.path.exists(src_file):
-					print("[{0}]: not backing up because file doesn't exist - {1}".format(backupMedium.name, src_file))
+				elif not os.path.exists(srcFile):
+					print("[{0}]: not backing up because file doesn't exist - {1}".format(backup_medium.name, srcFile))
 					continue
 				else:
 					# Something else failed like:
 					#  - backup medium has no space left
 					#  - we couldn't create the directory on the backup medium
 					#  - we couldn't copy the file over
-					raise e
+					raise exception
 		
 		progress_callback("backup complete")
 		
 	
-	def home_files_to_backup(self, backupMedium, progress_callback):
+	def get_home_files_to_backup(self, backup_medium):
 		BACKUP_PATH = os.path.expanduser("~")
 		EXCLUDES = [
 			'.cache',
@@ -203,11 +196,10 @@ class Controller(object):
 		]
 		
 		filesToBackup = []
-		filesProcessed = 0
 		
 		for root, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
-			if not os.path.exists(backupMedium.path):
-				raise Exception("Backup device was removed")
+			if not os.path.exists(backup_medium.path):
+				raise Exception("Backup medium was removed")
 			
 			# Common excludes
 			if root == BACKUP_PATH:
@@ -217,59 +209,46 @@ class Controller(object):
 			if root == (os.path.join(BACKUP_PATH, '.local/share')):
 				if 'Trash' in dirs: dirs.remove('Trash')
 			
-			if not os.path.exists(os.path.join(backupMedium.path, root[1:])):
+			if not os.path.exists(os.path.join(backup_medium.path, root[1:])):
 				for f in files:
-					filesProcessed += 1
-					progress_callback("2/3 scanning documents ({0} processed)".format(filesProcessed), log=False)
 					filesToBackup.append(os.path.join(root, f))
 			else:
 				for f in files:
-					filesProcessed += 1
-					progress_callback("2/3 scanning documents ({0} processed)".format(filesProcessed), log=False)
-										
-					absolute_file = os.path.join(root, f)
-					remote_mtime = -1
+					absolute_file_path = os.path.join(root, f)
+					remoteMtime = -1
 					try: 
-						remote_mtime = os.path.getmtime(os.path.join(backupMedium.path, absolute_file[1:]))
+						remoteMtime = os.path.getmtime(os.path.join(backup_medium.path, absolute_file_path[1:]))
 					except:
 						pass
 					try:
-						if os.path.getmtime(absolute_file) > remote_mtime:
-							filesToBackup.append(absolute_file)
+						if os.path.getmtime(absolute_file_path) > remoteMtime:
+							filesToBackup.append(absolute_file_path)
 					except OSError as e:
 						pass
 			
 		return filesToBackup
 	
-	def deleteOldFiles(self, backupMedium, progress_callback):
-		filesProcessed = 0		
-		
+	def delete_old_files(self, backup_medium, progress_callback):		
 		PATH = os.path.expanduser("~")
-		for root, dirs, files in scandir.walk(os.path.join(backupMedium.path, PATH[1:]), topdown=True):
+		for root, dirs, files in scandir.walk(os.path.join(backup_medium.path, PATH[1:]), topdown=True):
+			if not os.path.exists(backup_medium.path):
+				raise Exception("Backup medium was removed")
 			for d in dirs:
-				absolute_path = os.path.join(root, d)
-				if not os.path.exists('/'+os.path.relpath(absolute_path,backupMedium.path)):
+				absolute_file_path = os.path.join(root, d)
+				if not os.path.exists('/'+os.path.relpath(absolute_file_path,backup_medium.path)):
 					try:
-						shutil.rmtree(absolute_path)
+						shutil.rmtree(absolute_file_path)
 					except:
 						pass
 			
 			for f in files:
-				filesProcessed += 1
-				progress_callback("1/3 deleting old files from backup ({0} processed)".format(filesProcessed), log=False)
+				absolute_file_path = os.path.join(root, f)
 				
-				absolute_file = os.path.join(root, f)
-				
-				if not os.path.exists('/'+os.path.relpath(absolute_file, backupMedium.path)):
+				if not os.path.exists('/'+os.path.relpath(absolute_file_path, backup_medium.path)):
 					try:
-						os.remove(absolute_file)
+						os.remove(absolute_file_path)
 					except:
 						pass
 
 
-
-
-
-
-
-
+ 
