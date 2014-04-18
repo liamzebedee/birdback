@@ -196,6 +196,13 @@ class Controller(object):
 			'.local/share/Trash'
 		]
 		
+		excludes_by_user = []
+		# The user-defined excludes are absolute file paths, so we must trim off the prefix
+		for path in self.preferences.excluded_files:
+			relpath = os.path.relpath(path, BACKUP_PATH)
+			if relpath != '':
+				excludes_by_user.append(relpath)
+		
 		filesToBackup = []
 		
 		for dirpath, dirs, files in scandir.walk(BACKUP_PATH, topdown=True):
@@ -204,6 +211,7 @@ class Controller(object):
             
             # Excludes
 			dirs[:] = [directory for directory in dirs if directory not in EXCLUDES]
+			dirs[:] = [directory for directory in dirs if directory not in excludes_by_user]
 			
 			# If we haven't backed up this file before
 			if not os.path.exists(os.path.join(backup_medium.path, dirpath[1:])):
@@ -247,7 +255,5 @@ class Controller(object):
 						os.remove(absolute_file_path)
 					except:
 						pass
-
-
 
 
