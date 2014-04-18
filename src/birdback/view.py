@@ -19,7 +19,8 @@ class View(object):
 		self.indicator.set_icon(View.INACTIVE_ICON)
 		self.indicator.set_attention_icon(View.ATTENTION_ICON)
 		self.indicate_inactivity()
-		self.menu = Menu(self.quit, self.open_preferences)		
+		self.menu = Menu(self.quit, self.open_preferences)
+		self.preferences_window = None
 		self.indicator.set_menu(self.menu.gtk_menu)
 		Notify.init('birdback')
 		self.backup_controls = {}
@@ -78,8 +79,6 @@ class View(object):
 				self.indicate_inactivity()
 		self.backup_controls[backup_medium.path] = self.menu.add_menu_item(default_backup_label, backup)
 		#self.backup_controls[backup_medium.path].sensitive = False
-
-	
 	
 	def drive_removed(self, backup_medium):
 		if backup_medium.path in self.backup_controls:
@@ -88,9 +87,14 @@ class View(object):
 			self.menu.gtk_menu.remove(item)
 	
 	def open_preferences(self, _0):
-		preferences_window = PreferencesDialog(View.ATTENTION_ICON)
-		preferences_window.connect("delete-event", preferences_window.hide2)
-		preferences_window.show_all()
+		if self.preferences_window is not None: return
+		self.preferences_window = PreferencesWindow(View.ATTENTION_ICON, self.controller.preferences)
+		self.preferences_window.connect("delete-event", self.close_preferences)
+		self.preferences_window.show_all()
+	
+	def close_preferences(self, _0, _1):
+		self.preferences_window.destroy()
+		self.preferences_window = None
 	
 	def quit(self, _):
 		Notify.uninit()
@@ -123,17 +127,20 @@ class Menu(object):
 		self.gtk_menu.append(item)
 		item.show()
 
-class PreferencesDialog(Gtk.Window):
-	def __init__(self, icon_path):
+class PreferencesWindow(Gtk.Window):
+	def __init__(self, icon_path, preferences):		
 		Gtk.Window.__init__(self, title="Birdback - Preferences")
 		self.set_icon_from_file(icon_path)
 		self.set_border_width(10)
 		self.set_default_size(500, 400)
 		
 		self.excludes_list = Gtk.ListStore(str)
+		self.preferences = preferences
+		for excluded_file in self.preferences.excluded_files:
+			self.excludes_list.append([excluded_file])
 		tree = Gtk.TreeView(self.excludes_list)
 		self.tree = tree
-		column = Gtk.TreeViewColumn("Folders to ignore", Gtk.CellRendererText(), text=0)
+		column = Gtk.TreeViewColumn("Folders to exclude from backup", Gtk.CellRendererText(), text=0)
 		tree.append_column(column)
 		scroll = Gtk.ScrolledWindow()
 		scroll.hscrollbar_policy = Gtk.PolicyType.AUTOMATIC
@@ -160,7 +167,7 @@ class PreferencesDialog(Gtk.Window):
 		remove_button.connect("clicked", self.remove_path)
 		toolbar.insert(remove_button, -1)
 		
-		vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+		vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 		vbox.set_homogeneous(False)
 		self.add(vbox)
 		vbox.pack_start(scroll, True, True, 0)
@@ -168,8 +175,6 @@ class PreferencesDialog(Gtk.Window):
 		
 		selection = tree.get_selection()
 		selection.set_mode(Gtk.SelectionMode.MULTIPLE)
-		self.excludes_list.clear()
-		self.excludes_list.append(["/home/work/Random/moreshit/asdsadsad/aswd3f"])
 		
 		self.show_all()
 		
@@ -180,9 +185,12 @@ class PreferencesDialog(Gtk.Window):
 		response = file_chooser.run()
 		if response == Gtk.ResponseType.OK:
 			files = file_chooser.get_filenames()
-			print(str(files))
-			# add files
-		
+			# Add to view
+			for chosen_file in files:
+				self.excludes_list.append([chosen_file])
+			# Update preferences
+			self.sync_preferences()
+			
 		file_chooser.destroy()
 	
 	def remove_path(self, button):
@@ -192,7 +200,13 @@ class PreferencesDialog(Gtk.Window):
 		treeiters = []
 		for treepath in treepaths:
 			treeiter = model.get_iter(treepath)
+			filepath = model[treeiter][0]
+			# Remove from view
 			model.remove(treeiter)
+			# Update preferences
+			self.sync_preferences()
 	
-	def hide2(self, a1, a2):
-		self.destroy()
+	def sync_preferences(self):
+		excluded_files = [treeiter[0] for treeiter in self.excludes_list]
+		self.preferences.excluded_files = list(excluded_files) # make a copy
+		self.preferences.sync()

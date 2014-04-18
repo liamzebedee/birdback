@@ -1,7 +1,6 @@
 import view
 import model
 
-import scandir
 import time
 import os
 import os.path
@@ -12,12 +11,13 @@ import subprocess
 import glob
 import shutil
 import errno
-
 import logging
 
 import pyinotify
 from gi.repository import Gtk
 from gi.repository import GObject
+from gi.repository import GLib
+import scandir
 
 # This is so pyinotify can work in another background thread
 GObject.threads_init()
@@ -54,13 +54,13 @@ class Controller(object):
 		
 		# Load preferences from disk
 		# --------------------------
-		preferencesPath = os.path.join(os.path.expanduser("~"), ".local", "share", 'birdback')
-		self.preferences = model.Preferences(preferencesPath)
-		print("Preferences loaded")
+		preferences_path = os.path.join(GLib.get_user_config_dir(), 'birdback')
+		self.preferences = model.Preferences(preferences_path)
+		print("Preferences loaded from " + preferences_path)
 		
 		# Instantiate file system watchers
 		# --------------------------------
-		watchManager = pyinotify.WatchManager()
+		watch_manager = pyinotify.WatchManager()
 		
 		class BackupMediaDetector(pyinotify.ProcessEvent):
 			def __init__(self, controller):
@@ -70,10 +70,10 @@ class Controller(object):
 				path = event.pathname
 				if path.startswith('/dev/disk/by-id/usb'):
 					# Try to automatically mount it
-					devicePath = os.path.realpath("/dev/disk/by-id/"+os.readlink(path))
+					device_path = os.path.realpath("/dev/disk/by-id/"+os.readlink(path))
 					try:
 						# We use udisksctl here because it mounts to /media/USERNAME/XXX instead of simply /media/XXX
-						subprocess.check_output(['udisksctl', 'mount', '--block-device', devicePath])
+						subprocess.check_output(['udisksctl', 'mount', '--block-device', device_path])
 					except:
 						print('Error while mounting path: '+path)
 					return
@@ -90,11 +90,11 @@ class Controller(object):
 					self.controller.view.drive_removed(self.controller.backup_mediums[path])
 					del self.controller.backup_mediums[path]
 		
-		self.backupMediaWatcher = pyinotify.ThreadedNotifier(watchManager, BackupMediaDetector(self))
-		self.backupMediaWatcher.start()
+		self.backup_media_watcher = pyinotify.ThreadedNotifier(watch_manager, BackupMediaDetector(self))
+		self.backup_media_watcher.start()
 		
-		watchManager.add_watch(os.path.join('/media', getpass.getuser()), pyinotify.IN_DELETE | pyinotify.IN_CREATE, rec=False)
-		watchManager.add_watch('/dev/disk/by-id/', pyinotify.IN_CREATE, rec=False)
+		watch_manager.add_watch(os.path.join('/media', getpass.getuser()), pyinotify.IN_DELETE | pyinotify.IN_CREATE, rec=False)
+		watch_manager.add_watch('/dev/disk/by-id/', pyinotify.IN_CREATE, rec=False)
 		print("Added watch for USB/HDDs")
 	
 	def run(self):		
@@ -109,11 +109,11 @@ class Controller(object):
 		try:
 			for path in glob.glob("usb*"):
 				# Try to automatically mount it
-				devicePath = os.path.realpath("/dev/disk/by-id/"+os.readlink(path))
+				device_path = os.path.realpath("/dev/disk/by-id/"+os.readlink(path))
 				mounts = open("/proc/mounts")
 				for line in mounts:
 					parts = line.split(' ')
-					if parts[0] == devicePath and parts[1].startswith(os.path.join('/media', getpass.getuser())):
+					if parts[0] == device_path and parts[1].startswith(os.path.join('/media', getpass.getuser())):
 						path = parts[1]
 						self.backup_mediums[path] = model.BackupMedium(path)
 						self.view.drive_inserted(self.backup_mediums[path])
@@ -132,7 +132,7 @@ class Controller(object):
 	def quit(self, code=0):
 		print("Quitting...")
 		try:
-			self.backupMediaWatcher.stop()
+			self.backup_media_watcher.stop()
 			Gtk.main_quit()
 			self.preferences.close()
 		except Exception as e:
@@ -249,4 +249,5 @@ class Controller(object):
 						pass
 
 
- 
+
+
