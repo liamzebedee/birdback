@@ -5,7 +5,7 @@ from gi.repository import Notify
 import logging
 
 class View(object):
-	ACTIVE_ICON = '/usr/local/share/icons/hicolor/scalable/apps/birdback.svg'
+	INACTIVE_ICON = '/usr/local/share/icons/hicolor/scalable/apps/birdback.svg'
 	ATTENTION_ICON = '/usr/local/share/icons/hicolor/scalable/apps/birdback-active.svg'
 	
 	def __init__(self, controller):
@@ -16,13 +16,13 @@ class View(object):
 		  "birdback",
 		  appindicator.IndicatorCategory.APPLICATION_STATUS)
 		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
-		self.indicator.set_icon(View.ACTIVE_ICON)
+		self.indicator.set_icon(View.INACTIVE_ICON)
 		self.indicator.set_attention_icon(View.ATTENTION_ICON)
 		self.indicate_inactivity()
 		# Menu
 		self.menu = Menu(self.quit, self.open_preferences)
 		# Preferences dialog
-		self.preferences_dialog = PreferencesDialog()
+		self.preferences_dialog = PreferencesDialog(View.ATTENTION_ICON)
 		self.preferences_dialog.connect("delete-event", self.preferences_dialog.hide2)
 		
 		self.indicator.set_menu(self.menu.gtk_menu)
@@ -127,60 +127,68 @@ class Menu(object):
 		item.show()
 
 class PreferencesDialog(Gtk.Window):
-	def __init__(self):
+	def __init__(self, icon_path):
 		Gtk.Window.__init__(self, title="Birdback - Preferences")
+		self.set_icon_from_file(icon_path)
 		self.set_border_width(10)
-		self.set_default_size(500, 700)
-		box = Gtk.Box(Gtk.Orientation.VERTICAL, 0)
-		box.show()
-        
-		listbox = Gtk.ListBox()
-		listbox.set_selection_mode(Gtk.SelectionMode.NONE)
-		box.pack_start(listbox, True, True, 0)
-        
-		row1 = Gtk.ListBoxRow()
-		self.excludes = Gtk.ListStore(str)
-		tree = Gtk.TreeView(self.excludes)
-		#tree.set_default_size(500, 600)
-		tree.columns_autosize()
-		renderer = Gtk.CellRendererText()
-		column = Gtk.TreeViewColumn("Path", renderer, text=0)
-		tree.append_column(column)
-		tree.show()
-		row1.add(tree)
-		row1.show()
+		self.set_default_size(500, 400)
 		
-		row2 = Gtk.ListBoxRow()
-		tbar = Gtk.Toolbar();
-		tbar.set_style(Gtk.ToolbarStyle.ICONS)
-		tbar.set_icon_size(Gtk.IconSize.SMALL_TOOLBAR)
-		tbar.set_show_arrow(False)
-		tbar.get_style_context().add_class(Gtk.STYLE_CLASS_INLINE_TOOLBAR)
-		tbar.get_style_context().set_junction_sides(Gtk.JunctionSides.TOP)
+		self.excludes_list = Gtk.ListStore(str)
+		tree = Gtk.TreeView(self.excludes_list)
+		column = Gtk.TreeViewColumn("Folders to ignore", Gtk.CellRendererText(), text=0)
+		tree.append_column(column)
+		scroll = Gtk.ScrolledWindow()
+		scroll.hscrollbar_policy = Gtk.PolicyType.AUTOMATIC
+		scroll.vscrollbar_policy = Gtk.PolicyType.AUTOMATIC
+		scroll.shadow_type = Gtk.ShadowType.IN
+		scroll.add(tree)
+		
+		
+		toolbar = Gtk.Toolbar();
+		toolbar.set_style(Gtk.ToolbarStyle.ICONS)
+		toolbar.set_icon_size(Gtk.IconSize.SMALL_TOOLBAR)
+		toolbar.set_show_arrow(False)
+		scroll.get_style_context().set_junction_sides(Gtk.JunctionSides.BOTTOM)
+		toolbar.get_style_context().add_class(Gtk.STYLE_CLASS_INLINE_TOOLBAR)
+		toolbar.get_style_context().set_junction_sides(Gtk.JunctionSides.TOP)
+		
 		add_button = Gtk.ToolButton("Add")
 		add_button.set_icon_name("list-add-symbolic")
 		add_button.connect("clicked", self.add_path)
-		add_button.show()
-		tbar.insert(add_button, -1)
+		toolbar.insert(add_button, -1)
+		
 		remove_button = Gtk.ToolButton("Remove")
 		remove_button.set_icon_name("list-remove-symbolic")
 		remove_button.connect("clicked", self.remove_path)
-		remove_button.show()
-		tbar.insert(remove_button, -1)
-		tbar.show()
-		row2.add(tbar)
-		row2.show()
+		toolbar.insert(remove_button, -1)
 		
-		listbox.add(row1)
-		listbox.add(row2)
-		#box.pack_start(tree, True, True, 0);
-		#box.pack_start(tbar, False, True, 0);
-		self.add(box)
+		vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+		vbox.set_homogeneous(False)
+		self.add(vbox)
+		vbox.pack_start(scroll, True, True, 0)
+		vbox.pack_start(toolbar, False, True, 0)
+		
+		selection = tree.get_selection()
+		selection.set_mode(Gtk.SelectionMode.MULTIPLE)
+		self.excludes_list.clear()
+		self.excludes_list.append(["/home/work/Random/moreshit/asdsadsad/aswd3f"])
+		
+		self.show_all()
+		
+	def add_path(self, button):
+		file_chooser = Gtk.FileChooserDialog("Choose folder", self, Gtk.FileChooserAction.SELECT_FOLDER, (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, Gtk.STOCK_OPEN, Gtk.ResponseType.OK))
+		file_chooser.set_select_multiple(True)
+		
+		response = file_chooser.run()
+		if response == Gtk.ResponseType.OK:
+			files = file_chooser.get_filenames()
+			print(str(files))
+			# add files
+		
+		file_chooser.destroy()
 	
-	def add_path(self, _0, _1):
-		return
-	def remove_path(self, _0, _1):
+	def remove_path(self, button):
 		return
 	
-	def hide2(self, _0, _1):
+	def hide2(self, widget):
 		self.hide()
