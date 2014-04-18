@@ -21,31 +21,26 @@ class View(object):
 		self.indicate_inactivity()
 		self.menu = Menu(self.quit, self.open_preferences)
 		self.preferences_window = None
-		self.indicator.set_menu(self.menu.gtk_menu)
+		self.indicator.set_menu(self.menu)
 		Notify.init('birdback')
 		self.backup_controls = {}
-	
 	
 	def indicate_activity(self):
 		self.indicator.set_status(appindicator.IndicatorStatus.ATTENTION)
 		self.update_view()
 	
-	
 	def indicate_inactivity(self):
 		self.indicator.set_status(appindicator.IndicatorStatus.ACTIVE)
 		self.update_view()
-
-
+	
 	# This is to fire the event loop
 	def update_view(self):
 		while Gtk.events_pending():
 			Gtk.main_iteration_do(False)
 	
-	
 	def show_notification(self, message):
 		n = Notify.Notification.new('BirdBack', message, None)
 		n.show()
-	
 	
 	def drive_inserted(self, backup_medium):
 		# Create a menu item for the backup medium
@@ -78,7 +73,6 @@ class View(object):
 				backup_control.set_label(default_backup_label)
 				self.indicate_inactivity()
 		self.backup_controls[backup_medium.path] = self.menu.add_menu_item(default_backup_label, backup)
-		#self.backup_controls[backup_medium.path].sensitive = False
 	
 	def drive_removed(self, backup_medium):
 		if backup_medium.path in self.backup_controls:
@@ -101,19 +95,18 @@ class View(object):
 		self.controller.quit()
 
 
-# TODO make this inherit from Gtk.Menu, simplify things
-class Menu(object):
+
+class Menu(Gtk.Menu):
 	def __init__(self, quit_handler, preferences_handler):
-		self.gtk_menu = Gtk.Menu()
-		self.gtk_menu.show_all()
-		
+		Gtk.Menu.__init__(self)		
 		self.add_image_menu_item('Quit', quit_handler, 'gtk-stop')
 		self.add_image_menu_item('Preferences', preferences_handler, 'gtk-preferences')
+		self.show_all()
 	
 	def add_menu_item(self, label, handler, event="activate", MenuItem=Gtk.MenuItem, show=True):
 		item = MenuItem(label)
 		item.connect(event, handler)
-		self.gtk_menu.append(item)
+		self.append(item)
 		if show:
 			item.show()
 		return item
@@ -124,8 +117,10 @@ class Menu(object):
 		item = Gtk.ImageMenuItem(label)
 		item.set_image(img)
 		item.connect(event, handler)
-		self.gtk_menu.append(item)
+		self.append(item)
 		item.show()
+
+
 
 class PreferencesWindow(Gtk.Window):
 	def __init__(self, icon_path, preferences):		
