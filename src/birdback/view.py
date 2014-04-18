@@ -19,12 +19,7 @@ class View(object):
 		self.indicator.set_icon(View.INACTIVE_ICON)
 		self.indicator.set_attention_icon(View.ATTENTION_ICON)
 		self.indicate_inactivity()
-		# Menu
-		self.menu = Menu(self.quit, self.open_preferences)
-		# Preferences dialog
-		self.preferences_dialog = PreferencesDialog(View.ATTENTION_ICON)
-		self.preferences_dialog.connect("delete-event", self.preferences_dialog.hide2)
-		
+		self.menu = Menu(self.quit, self.open_preferences)		
 		self.indicator.set_menu(self.menu.gtk_menu)
 		Notify.init('birdback')
 		self.backup_controls = {}
@@ -93,7 +88,9 @@ class View(object):
 			self.menu.gtk_menu.remove(item)
 	
 	def open_preferences(self, _0):
-		self.preferences_dialog.show_all()
+		preferences_window = PreferencesDialog(View.ATTENTION_ICON)
+		preferences_window.connect("delete-event", preferences_window.hide2)
+		preferences_window.show_all()
 	
 	def quit(self, _):
 		Notify.uninit()
@@ -198,4 +195,4 @@ class PreferencesDialog(Gtk.Window):
 			model.remove(treeiter)
 	
 	def hide2(self, a1, a2):
-		self.hide()
+		self.destroy()
