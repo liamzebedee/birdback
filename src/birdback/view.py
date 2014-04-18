@@ -93,7 +93,7 @@ class View(object):
 			self.menu.gtk_menu.remove(item)
 	
 	def open_preferences(self, _0):
-		self.preferences_dialog.show()
+		self.preferences_dialog.show_all()
 	
 	def quit(self, _):
 		Notify.uninit()
@@ -135,6 +135,7 @@ class PreferencesDialog(Gtk.Window):
 		
 		self.excludes_list = Gtk.ListStore(str)
 		tree = Gtk.TreeView(self.excludes_list)
+		self.tree = tree
 		column = Gtk.TreeViewColumn("Folders to ignore", Gtk.CellRendererText(), text=0)
 		tree.append_column(column)
 		scroll = Gtk.ScrolledWindow()
@@ -188,7 +189,13 @@ class PreferencesDialog(Gtk.Window):
 		file_chooser.destroy()
 	
 	def remove_path(self, button):
-		return
+		selection = self.tree.get_selection()
+		model, treepaths = selection.get_selected_rows()
+		if model is None: return
+		treeiters = []
+		for treepath in treepaths:
+			treeiter = model.get_iter(treepath)
+			model.remove(treeiter)
 	
-	def hide2(self, widget):
+	def hide2(self, a1, a2):
 		self.hide()
